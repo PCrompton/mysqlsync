@@ -13,6 +13,6 @@ Recommended:
 Instructions:
 
 1. Download mysqlsync and place it on your local server.
-2. In your browser's address bar, type localhost/mysqlsync.
+2. In your browser's address bar, type localhost/mysqlsync (or whatever the filename may be).
 3. Enter your MySQL credentials and hit "submit."
 4. (optional) log in to phpmyadmin before and after running the script to see changes more clearly 
