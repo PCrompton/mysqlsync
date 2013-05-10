@@ -21,5 +21,5 @@ $srcclone = array($srcsrv, $srcun, $srcpw, $trgdb);
 $dbA_cred = array($trgsrv, $trgun, $trgpw, $dbA);
 $dbB_cred = array($trgsrv, $trgun, $trgpw, $dbB);
 $buf_cred = array($trgsrv, $trgun, $trgpw, $buf);
-
+$cred = array($trgsrv, $trgun, $trgpw);
 ?>

@@ -11,6 +11,26 @@ function create_database($db, $con) {
 	}
 }
 
+function check_column_info($db1_info, $db2_info) {
+	if ($db1_info !== $db2_info) {
+		echo "<br>Column info does not match!<br>";
+		$i = 0;
+		foreach ($db1_info as $db1_column) {
+			$db2_column = $db2_info[$i];
+			echo '<br>';
+			echo 'db1 <br>';
+			print_array($db1_column);
+			echo 'db2 <br>';
+			print_array($db2_column);
+			$i++;
+			echo '<br>';
+		}
+	}
+	else {
+		echo "<br>Column info matches!<br>";
+	}
+
+}
 /** reset_table($db_con, $db_cred, $table)
  * Clears all contents from given table
  *

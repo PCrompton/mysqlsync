@@ -19,6 +19,44 @@ function create_connection($credentials) {
 	return $con;  		
 }
 
+/** convert_timestamp($timestamp)
+ * Returns a unix timestamp value converted from given timestamp. 
+ *
+ * $timestamp = YYYY-MM-DD hh:mm:ss.
+ */
+function convert_timestamp($timestamp) {
+	$date_time_array = explode(' ', $timestamp);
+	$date = $date_time_array[0];
+	$time = $date_time_array[1];
+
+	$date_explode = explode('-', $date);
+	$time_explode = explode(':', $time);
+	
+	$year = $date_explode[0];
+	$month = $date_explode[1];
+	$day = $date_explode[2];
+	$hour = $time_explode[0];
+	$minute = $time_explode[1];
+	$second = $time_explode[2];
+	
+	$unix_timestamp = mktime($hour, $minute, $second, $month, $day, $year);
+	$check_date = date('Y-m-d H:i:s',$unix_timestamp);
+	if ($check_date != $timestamp) {
+		echo "<br>Conversion Discrepency<br>";
+	}
+	return $unix_timestamp;
+}
+
+function is_newer($timestamp1, $timestamp2) {
+	if ($timestamp1 > $timestamp2) {
+		return true;	
+	}
+	else {
+		return false;
+	}
+
+}
+
 //-------------FETCH FUNCTIONS-------------------//
 
 function fetch_databases($credentials) {
@@ -109,6 +147,15 @@ function get_column_names($columns) {
 	return $column_names;
 }
 
+function get_column_info($table, $con) {
+	$columns = array();
+	$result = mysqli_query($con, "SHOW COLUMNS FROM $table");
+	while($column = mysqli_fetch_array($result, MYSQLI_ASSOC)) {
+		array_push($columns, $column);
+	}
+	return $columns;
+}
+
 /** get_column_datatypes($columns)
  * Returns an associative array of the column's datatype
  * with the column's name as it's key.
@@ -170,9 +217,10 @@ function print_array($array) {
  */
 function print_keys($array) {
 	foreach ($array as $element) {
-		echo "  ".key($array)." ";
+		echo "  ".key($array)." <br>";
 		next($array);
 	}
+	echo "\n<br>";
 }
 
 //----------END DISPLAY FUNCTIONS--------------//
@@ -246,20 +294,38 @@ function format_element($element, $column_name, $datatype) {
  *
  * $tablename = a string containing desired name of new table
  * $con = a database connection
- * $columns = a string representing the parameters of the table's columns 
- * 		NOTE: required format = '(column1, datatype, column2, datatype...)'
+ * $columns = an array representing the desired names and datatypes of the new table's columns 
+ * $pk = the primary key for this table--
  */
-function create_table($tablename, $con, $columns) {
-	$sql='CREATE TABLE '.$tablename.$columns;
+function create_table($tablename, $con, $columns, $pk='') {
+	$column_names = get_column_names($columns);
+	$column_datatypes = get_column_datatypes($columns);
+	$formatted_columns = format_columns($columns);
+	$pk_col = $pk.' int NOT NULL';
+	$pk_sql = ', PRIMARY KEY ('.$pk.')';
+	if ($pk != '') {
+		//echo "$pk <br>";
+		if (in_array($pk, $column_names) == false) {
+			$formatted_columns = $pk_col.', '.$formatted_columns.$pk_sql;
+		}
+		else {
+			$pk_datatype = $column_datatypes[$pk];
+			$formatted_columns = str_replace($pk.' '.$pk_datatype, $pk_col, $formatted_columns);
+			$formatted_columns .= $pk_sql;	
+		}
+	}
+	$formatted_columns = '('.$formatted_columns.')';
+	$sql='CREATE TABLE '.$tablename.$formatted_columns;
 	if (mysqli_query($con,$sql)) {
 	}
 	else {
-		echo "$sql \n";
-		echo "$columns \n";
-  		echo "Unable to create $tablename \n";
+		echo "$sql<br>\n";
+		echo "$formatted_columns<br>\n";
+  		echo "Unable to create $tablename<br><br>\n";
   		
   	}	
 }
+ 
 
 /** add_columns($table, $columns, $con)
  * Creates columns in MySQL table given array of column names and datatype, database
@@ -457,12 +523,18 @@ function sync_tables($db1_cred, $db2_cred) {
 	$db2_tables = fetch_tables($db2_cred);
 	
 	foreach ($db1_tables as $table) {
-	
+		
 		//adds entire table and it's columns if missing from db2
 		$db1_columns = fetch_columns($table, $db1_con);
-		$formatted_columns = '('.format_columns($db1_columns).')';
+		$db1_info = get_column_info($table, $db1_con);
+		$pk = '';
+		foreach ($db1_info as $column) {
+			if ($column['Key'] == 'PRI') {
+				$pk = $column['Field'];
+			}
+		}
 		if (in_array($table, $db2_tables) == False) {
-			create_table($table, $db2_con, $formatted_columns);
+			create_table($table, $db2_con, $db1_columns, $pk);
 		}
 		//adds missing columns
 		$db1_columns = fetch_columns($table, $db1_con);
