@@ -26,11 +26,19 @@ $table = 'Persons';
 reset_table($dbA_con, $dbA_cred, $table);
 reset_table($dbB_con, $dbB_cred, $table);
 reset_table($buf_con, $buf_cred, $table);
+reset_table($dbA_con, $dbA_cred, $table."_ts");
+reset_table($dbB_con, $dbB_cred, $table."_ts");
+reset_table($buf_con, $buf_cred, $table."_ts");
 
-$columns = array('P_Id int', 'LastName varchar(255)', 'FirstName varchar(255)', 'Address varchar(255)', 'City varchar(255)', 'LastUpdated timestamp');
-create_table($table, $dbA_con, $columns, 'P_Id');
+//echo '<br>s--------------------<br>';
+
+$columns = array('P_Id int', 'LastName varchar(255)', 'FirstName varchar(255)', 'Address varchar(255)', 'City varchar(255)');
+create_timestamp_table($table, $dbA_con, $columns, 'P_Id');
+//echo '<br>e--------------------<br>';
 $columns = fetch_columns($table, $dbA_con);
 $formatted_cols = '('.format_columns($columns).')';
+
+
 
 $data = "(4,'Nilsen', 'Johan', 'Bakken 2', 'Stavanger', NOW())";
 insert_data($data, $table, $dbA_con);
@@ -146,6 +154,10 @@ else {
 reset_table($dbA_con, $dbA_cred, $table);
 reset_table($dbB_con, $dbB_cred, $table);
 reset_table($buf_con, $buf_cred, $table);
+reset_table($dbA_con, $dbA_cred, $table."_ts");
+reset_table($dbB_con, $dbB_cred, $table."_ts");
+reset_table($buf_con, $buf_cred, $table."_ts");
+
 
 //dbA
 $columns = array('P_Id int', 'LastName varchar(255)', 'FirstName varchar(255)', 'Address varchar(255)', 'City varchar(255)', 'dbACol varchar(255)', 'LastUpdated timestamp');

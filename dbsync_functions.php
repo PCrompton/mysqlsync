@@ -90,6 +90,28 @@ function fetch_tables($credentials) {
     return $tables;
 }
 
+function fetch_ts_tables($credentials) {
+	$tables = fetch_tables($credentials);
+	$ts_tables = array();
+	foreach ($tables as $table) {
+		if (strstr($table, '_ts') != false) {
+			array_push($ts_tables, $table);
+		}
+	}
+	return $ts_tables;
+}
+
+function fetch_non_ts_tables($credentials) {
+	$tables = fetch_tables($credentials);
+	$non_ts_tables = array();
+	foreach ($tables as $table) {
+		if (strstr($table, '_ts') == false) {
+			array_push($non_ts_tables, $table);
+		}
+	}
+	return $non_ts_tables;
+}
+
 /** fetch_columns($table, $con)
  * Returns array of all column names and their data types in a given table.
  *
@@ -289,20 +311,35 @@ function format_element($element, $column_name, $datatype) {
 
 //-----------ALTER DATABSE FUNCTIONS----------//
 
+
+function create_timestamp_table($tablename, $con, $columns, $pk) {
+	create_table($tablename, $con, $columns, $pk);
+	$column_names = get_column_names($columns);
+	$timestamp_columns = array();
+	foreach ($column_names as $column) {
+		$timestamp_column = $column.' timestamp';
+		array_push($timestamp_columns, $timestamp_column);	
+	}
+	create_table($tablename."_ts", $con, $timestamp_columns, $pk."_ts", $pk, $tablename);
+}
+
 /** create_table($tablename, $con, $columns)
  * Creates a MySQL table.
  *
  * $tablename = a string containing desired name of new table
  * $con = a database connection
  * $columns = an array representing the desired names and datatypes of the new table's columns 
- * $pk = the primary key for this table--
+ * $pk = the primary key for this table
+ * $fk = foreign key for this table
  */
-function create_table($tablename, $con, $columns, $pk='') {
+function create_table($tablename, $con, $columns, $pk='', $fk='', $fk_ref='') {
 	$column_names = get_column_names($columns);
 	$column_datatypes = get_column_datatypes($columns);
 	$formatted_columns = format_columns($columns);
 	$pk_col = $pk.' int NOT NULL';
 	$pk_sql = ', PRIMARY KEY ('.$pk.')';
+	$fk_col = $fk.' int';
+	$fk_sql = ', FOREIGN KEY ('.$fk.') REFERENCES '.$fk_ref.'('.$fk.')';
 	if ($pk != '') {
 		//echo "$pk <br>";
 		if (in_array($pk, $column_names) == false) {
@@ -314,8 +351,19 @@ function create_table($tablename, $con, $columns, $pk='') {
 			$formatted_columns .= $pk_sql;	
 		}
 	}
+	if ($fk != '') {
+		if (in_array($fk, $column_names) == false) {
+			$formatted_columns = $fk_col.', '.$formatted_columns.$fk_sql;
+		}
+		else {
+			$fk_datatype = $column_datatypes[$fk];
+			$formatted_columns = str_replace($fk.' '.$fk_datatype, $fk_col, $formatted_columns);
+			$formatted_columns .= $fk_sql;
+		}
+	}
 	$formatted_columns = '('.$formatted_columns.')';
 	$sql='CREATE TABLE '.$tablename.$formatted_columns;
+	//echo $sql;
 	if (mysqli_query($con,$sql)) {
 	}
 	else {
@@ -424,10 +472,16 @@ function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
 	//if table contains no previously existing data
 	if (count($remaining_columns) == 0) {
 		$row = $updated_elements;
+		$ts_row = array();
+		for ($i=0; $i<count($row); $i++) {
+			array_push($ts_row, 'NOW()');
+		}
 		$columns = $updated_columns;
 		$formatted_row = format_row($row);
+		$formatted_ts_row = format_row($ts_row);
 		$formatted_columns = format_columns($columns);
 		insert_data('('.$formatted_row.')', $table, $con, '('.$formatted_columns.')');
+		//insert_data('('.$formatted_ts_row.')', $table.'_ts', $con, '('.$formatted_columns.')');
 	}
 	//if table does contain previously existing data
 	else {
@@ -519,8 +573,8 @@ function sync_tables($db1_cred, $db2_cred) {
 	$db2 = $db2_cred[3];
 	$db1_con = create_connection($db1_cred);
 	$db2_con = create_connection($db2_cred);
-	$db1_tables = fetch_tables($db1_cred);
-	$db2_tables = fetch_tables($db2_cred);
+	$db1_tables = fetch_non_ts_tables($db1_cred);
+	$db2_tables = fetch_non_ts_tables($db2_cred);
 	
 	foreach ($db1_tables as $table) {
 		

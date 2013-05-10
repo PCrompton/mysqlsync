@@ -44,7 +44,7 @@ function check_column_info($db1_info, $db2_info) {
 function reset_table($db_con, $db_cred, $table) {
 	$db_tables = fetch_tables($db_cred);
 	if (in_array($table, $db_tables)) {
-		mysqli_query($db_con, "DROP TABLE $table");
+		mysqli_query($db_con, "DROP TABLE ".$table);
 	}
 }
 

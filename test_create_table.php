@@ -20,8 +20,7 @@ create_table('table3', $con, $columns, 'col0');
 $columns = array('col1 varchar(255)', 'col2 varchar(255)', 'col3 varchar(255)');
 create_table('table4', $con, $columns, 'col1');
 
-
-
+/*
 for ($i = 1; $i<5; $i++) {
 	echo 'table'.$i."<br>";
 	$columns = get_column_info('table'.$i, $con);
@@ -33,6 +32,18 @@ for ($i = 1; $i<5; $i++) {
 	
 	}
 }
+*/
+//Test 2
+for ($i = 1; $i<5; $i++) {
+	reset_table($con, $dbA_cred, 'table'.$i);
+}
+$columns = array('col1 int', 'col2 varchar(255)', 'col3 varchar(255)');
+create_timestamp_table('table2', $con, $columns, 'col1');
+create_timestamp_table('table3', $con, $columns, 'col0');
+$columns = array('col1 varchar(255)', 'col2 varchar(255)', 'col3 varchar(255)');
+create_timestamp_table('table4', $con, $columns, 'col1');
+
+
 mysqli_close($con);
 	
 ?>
