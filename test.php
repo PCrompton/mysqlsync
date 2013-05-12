@@ -3,15 +3,17 @@ require 'input_credentials.php';
 require 'dbsync_functions.php';
 require 'test_dbsync_functions.php';
 echo "\n <br>";
-
-$dbs = fetch_databases($input_cred);
-$dbs_to_create = array($dbA, $dbB, $buf);
 $input_con = create_connection($input_cred);
-foreach ($dbs_to_create as $db) {
-	if (in_array($db, $dbs) == false) {
-		create_database($db, $input_con);
-	}
-} 
+$dbs = fetch_databases($input_cred);
+foreach ($dbs as $db) {
+	mysqli_query($input_con, 'DROP DATABASE '.$db);
+}
+$dbs_to_create = array($dbA, $dbB, $buf);
+
+create_database('dbA', $input_con);
+create_database('dbB', $input_con);
+create_database('buf', $input_con);
+
 $dbA_con = create_connection($dbA_cred);
 $dbB_con = create_connection($dbB_cred);
 $buf_con = create_connection($buf_cred);
@@ -37,14 +39,23 @@ create_timestamp_table($table, $dbA_con, $columns, 'P_Id');
 //echo '<br>e--------------------<br>';
 $columns = fetch_columns($table, $dbA_con);
 $formatted_cols = '('.format_columns($columns).')';
+echo $formatted_cols;
 
-
-
-$data = "(4,'Nilsen', 'Johan', 'Bakken 2', 'Stavanger', NOW())";
+$U_now = time();
+date_default_timezone_set("GMT");
+$now = date("Y-m-d H:i:s", $U_now);
+$data = "(NULL, 'Nilsen', 'Johan', 'Bakken 2', 'Stavanger')";
+$data_ts ="(NULL, 1, '$now', '$now', '$now', '$now')";
+$table_ts = $table."_ts";
+echo "<br>$data_ts<br>";
 insert_data($data, $table, $dbA_con);
+insert_data($data_ts, $table_ts, $dbA_con);
 
-$data = "(1, 'Hansen', 'Ola', 'Timoteivn 10', 'Sandnes', NOW())";
+$data = "(NULL, 'Hansen', 'Ola', 'Timoteivn 10', 'Sandnes')";
+$data_ts ="(NULL, 2, '$now', '$now', '$now', '$now')";
+echo "<br>$data_ts<br>";
 insert_data($data, $table, $dbA_con);
+insert_data($data_ts, $table_ts, $dbA_con);
 
 sleep($secs);
 sync_tables($dbA_cred, $buf_cred);
@@ -80,10 +91,16 @@ elseif ($test2 = true) {
 
 //Test 2: tests inserted columns
 echo "<br>TEST 2";
-$sql1 = "ALTER TABLE ".$table." ADD NewColumn varchar(255)";
-$sql2 = "ALTER TABLE ".$table." ADD InsertedColumn int AFTER FirstName";
-$sql3 = "UPDATE ".$table." SET InsertedColumn = 1, NewColumn='hi' WHERE P_Id=4";
-$sql4 = "UPDATE ".$table." SET InsertedColumn = 2, NewColumn='ho' WHERE P_Id=1";
+insert_column($table, 'NewColumn varchar(255)', $dbA_con);
+insert_column($table, 'InsertedColumn int', $dbA_con, 'FirstName');
+$U_now = time();
+date_default_timezone_set("GMT");
+$now = date("Y-m-d H:i:s", $U_now);
+$sql1 = "UPDATE ".$table." SET InsertedColumn = 1, NewColumn='hi' WHERE P_Id=1";
+$sql2 = "UPDATE ".$table." SET InsertedColumn = 2, NewColumn='ho' WHERE P_Id=2";
+$sql3 = "UPDATE ".$table."_ts SET InsertedColumn = '$now', NewColumn='$now' WHERE P_Id=1";
+$sql4 = "UPDATE ".$table."_ts SET InsertedColumn = '$now', NewColumn='$now' WHERE P_Id=2";
+echo "<br>$sql3<br>$sql4<br>";
 mysqli_query($dbA_con, $sql1);
 mysqli_query($dbA_con, $sql2);
 mysqli_query($dbA_con, $sql3);
@@ -121,13 +138,20 @@ else {
 	echo "<br>Test 3: data fail! <br>\n";
 }
 //End Test 3
-
+/*
 //Test 4: tests updated data again after alterations
 echo "<br>TEST 4";
-$sql5 = "UPDATE ".$table." SET InsertedColumn = 3, NewColumn='ho' WHERE P_Id=4";
-$sql6 = "UPDATE ".$table." SET InsertedColumn = 4, NewColumn='hum' WHERE P_Id=1";
+$U_now = time();
+date_default_timezone_set("GMT");
+$now = date("Y-m-d H:i:s", $U_now);
+$sql5 = "UPDATE ".$table." SET InsertedColumn = 3, NewColumn='ho' WHERE P_Id=1";
+$sql6 = "UPDATE ".$table." SET InsertedColumn = 4, NewColumn='hum' WHERE P_Id=2";
+$sql7 = "UPDATE ".$table."_ts SET InsertedColumn = '$now', NewColumn='$now' WHERE P_Id=1";
+$sql8 = "UPDATE ".$table."_ts SET InsertedColumn = '$now', NewColumn='$now' WHERE P_Id=2";
 mysqli_query($dbA_con, $sql5);
 mysqli_query($dbA_con, $sql6);
+mysqli_query($dbA_con, $sql7);
+mysqli_query($dbA_con, $sql8);
 
 sleep($secs);
 sync_tables($dbA_cred, $buf_cred);

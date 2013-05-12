@@ -169,6 +169,19 @@ function get_column_names($columns) {
 	return $column_names;
 }
 
+function get_primary_key($table, $con) {
+	$columns = get_column_info($table, $con);
+	foreach ($columns as $column) {
+		if ($column['Key'] == 'PRI') {
+			return $column['Field'];
+		}
+		else {
+			return null;
+		}
+	}
+
+}
+
 function get_column_info($table, $con) {
 	$columns = array();
 	$result = mysqli_query($con, "SHOW COLUMNS FROM $table");
@@ -300,8 +313,8 @@ function format_row($row) {
  */
 function format_element($element, $column_name, $datatype) {
 	$formatted_datatype = trim(preg_replace("/\([^)]+\)/", "", $datatype));
-	global $text_types;
-	if (in_array($formatted_datatype, $text_types)) {
+	global $num_types;
+	if (in_array($formatted_datatype, $num_types)==false) {
 		$element = "'".$element."'";
 	}
 	return $element;
@@ -336,7 +349,7 @@ function create_table($tablename, $con, $columns, $pk='', $fk='', $fk_ref='') {
 	$column_names = get_column_names($columns);
 	$column_datatypes = get_column_datatypes($columns);
 	$formatted_columns = format_columns($columns);
-	$pk_col = $pk.' int NOT NULL';
+	$pk_col = $pk.' int NOT NULL AUTO_INCREMENT';
 	$pk_sql = ', PRIMARY KEY ('.$pk.')';
 	$fk_col = $fk.' int';
 	$fk_sql = ', FOREIGN KEY ('.$fk.') REFERENCES '.$fk_ref.'('.$fk.')';
@@ -401,13 +414,16 @@ function add_columns($table, $columns, $con) {
  * $prev_col = a string of the column name immediate preceding
  * the column to be added
  */
-function insert_column($table, $column, $con, $prev_col) {
+function insert_column($table, $column, $con, $prev_col=null) {
 	$prev_col_name = get_column_name($prev_col);
 	$sql = "ALTER TABLE ".$table." ADD ".$column;
+	$sql_ts = "ALTER TABLE ".$table."_ts ADD ".$column;
 	if ($prev_col != '') {
 		$sql = "ALTER TABLE ".$table." ADD ".$column." AFTER ".$prev_col_name;
+		$sql_ts = "ALTER TABLE ".$table."_ts ADD ".$column." AFTER ".$prev_col_name;
 	}
 	mysqli_query($con, $sql);
+	mysqli_query($con, $sql_ts);
 }
 
 /** insert_data($data, $table, $con)
@@ -419,19 +435,22 @@ function insert_column($table, $column, $con, $prev_col) {
  */
 function insert_data($formatted_data, $table, $con, $formatted_columns = '') {
 	$query = 'INSERT INTO '.$table.''.$formatted_columns.' VALUES '.$formatted_data;
-	//echo "\n$query\n";
+	echo "<br>$table<br>";
+	echo "\n<br>$query<br>\n";
 	mysqli_query($con, $query);
 }
+
+
 
 /** update_row($db1_row, $db2_row, $column_datatypes, $table, $con)
  * Updates given row with new data
  *
- * $db1_data = represents db1_data as a two-dimensional 
+ * $db1_row = represents database row from db1 as an
  *	array consisting of an associative array
- * 	of each row inside another array
- * $db2_data = represents db2_data as a two-dimensional 
+ * 	with the column name as the element's key.
+  * $db2_row = represents database row from db1 as an
  *	array consisting of an associative array
- * 	of each row inside another array
+ * 	with the column name as the element's key.
  * $column_datatypes = an associative array of string values
  *  representing each column's datatype with the respective
  *  column name as it's key.
@@ -444,23 +463,30 @@ function insert_data($formatted_data, $table, $con, $formatted_columns = '') {
  */
 function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
 	
+	$ts_table = $table."_ts";
 	$updated_columns = array();
 	$remaining_columns = array();
 	$updated_elements = array();
 	$remaining_elements = array();
-	
+	$updated_timestamps = array();
+	$pk = get_primary_key($table, $con);
+	$pk_data = $db1_row[$pk];
+
+	$U_now = time();
+	date_default_timezone_set("GMT");
+	$now = date("Y-m-d H:i:s", $U_now);
+
+	echo "<br>$now<br>";
+	//echo "<br>now: ".$now;
 	//sorts which columns and elements need updates and which ones don't
 	foreach ($db1_row as $db1_element) {
 		$column_name = array_search($db1_element, $db1_row);
 		$db2_element = $db2_row[$column_name];
 		$element_datatype = $column_datatypes[$column_name];
 		$formatted_element = format_element($db1_element, $column, $element_datatype);
-		if ($column_name == 'LastUpdated') {
-			$updated_elements[$column_name] = 'NOW()';
-			array_push($updated_columns, $column_name);
-		}
-		elseif ($db2_element !== $db1_element) {
+		if ($db2_element !== $db1_element) {
 			$updated_elements[$column_name] = $formatted_element;
+			$updated_timestamps[$column_name] = $formatted_element;
 			array_push($updated_columns, $column_name);			
 		}
 		else {
@@ -472,43 +498,43 @@ function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
 	//if table contains no previously existing data
 	if (count($remaining_columns) == 0) {
 		$row = $updated_elements;
-		$ts_row = array();
-		for ($i=0; $i<count($row); $i++) {
-			array_push($ts_row, 'NOW()');
+		$ts_row = array($pk_data);
+		
+		for ($i=1; $i<count($row); $i++) {
+			array_push($ts_row, "'$now'");
 		}
 		$columns = $updated_columns;
 		$formatted_row = format_row($row);
 		$formatted_ts_row = format_row($ts_row);
 		$formatted_columns = format_columns($columns);
 		insert_data('('.$formatted_row.')', $table, $con, '('.$formatted_columns.')');
-		//insert_data('('.$formatted_ts_row.')', $table.'_ts', $con, '('.$formatted_columns.')');
+		insert_data('('.$formatted_ts_row.')', $table.'_ts', $con, '('.$formatted_columns.')');
 	}
 	//if table does contain previously existing data
 	else {
 		$set = '';
+		$ts_set = '';
 		$n = count($updated_columns);
 		foreach ($updated_columns as $column) {
 			--$n;
 			$element = $updated_elements[$column];
 			
 			$set .= "$column=$element";
+			$ts_set .= "$column='$now'";
 			if ($n != 0) {
 				$set.=", ";
+				$ts_set .=", ";
 			}	
 		}
-		$where = '';
-		$n = count($remaining_columns);
-		foreach ($remaining_columns as $column) {
-			--$n;
-			$element = $remaining_elements[$column];
-			$where .= "$column=$element";
-			if ($n != 0) {
-				$where .= " AND ";
-			}
-		}	
+		
+		$where = "$pk=$pk_data";
 		$query = "UPDATE $table SET $set WHERE $where";
-		//echo "\n$query\n";
+		
+		$ts_query = "UPDATE ".$table."_ts SET ".$ts_set." WHERE ".$where;
+		echo "<br>query: $query";
+		echo "<br>ts_query: $ts_query<br>";
 		mysqli_query($con, $query);	
+		mysqli_query($con, $ts_query);
 	}	
 }
 
@@ -588,7 +614,7 @@ function sync_tables($db1_cred, $db2_cred) {
 			}
 		}
 		if (in_array($table, $db2_tables) == False) {
-			create_table($table, $db2_con, $db1_columns, $pk);
+			create_timestamp_table($table, $db2_con, $db1_columns, $pk);
 		}
 		//adds missing columns
 		$db1_columns = fetch_columns($table, $db1_con);
