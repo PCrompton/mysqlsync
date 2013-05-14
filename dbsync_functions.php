@@ -415,12 +415,13 @@ function add_columns($table, $columns, $con) {
  * the column to be added
  */
 function insert_column($table, $column, $con, $prev_col=null) {
+	$col_name = get_column_name($column);
 	$prev_col_name = get_column_name($prev_col);
 	$sql = "ALTER TABLE ".$table." ADD ".$column;
-	$sql_ts = "ALTER TABLE ".$table."_ts ADD ".$column;
+	$sql_ts = "ALTER TABLE ".$table."_ts ADD ".$col_name." timestamp";
 	if ($prev_col != '') {
 		$sql = "ALTER TABLE ".$table." ADD ".$column." AFTER ".$prev_col_name;
-		$sql_ts = "ALTER TABLE ".$table."_ts ADD ".$column." AFTER ".$prev_col_name;
+		$sql_ts = "ALTER TABLE ".$table."_ts ADD ".$col_name." timestamp AFTER ".$prev_col_name;
 	}
 	mysqli_query($con, $sql);
 	mysqli_query($con, $sql_ts);
@@ -468,7 +469,6 @@ function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
 	$remaining_columns = array();
 	$updated_elements = array();
 	$remaining_elements = array();
-	$updated_timestamps = array();
 	$pk = get_primary_key($table, $con);
 	$pk_data = $db1_row[$pk];
 
@@ -485,11 +485,12 @@ function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
 		$element_datatype = $column_datatypes[$column_name];
 		$formatted_element = format_element($db1_element, $column, $element_datatype);
 		if ($db2_element !== $db1_element) {
+			echo "<br>updated column: $column_name<br>";
 			$updated_elements[$column_name] = $formatted_element;
-			$updated_timestamps[$column_name] = $formatted_element;
 			array_push($updated_columns, $column_name);			
 		}
 		else {
+			echo "<br>remaining column: $column_name<br>";
 			$remaining_elements[$column_name] = $formatted_element;
 			array_push($remaining_columns, $column_name);
 		}

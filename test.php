@@ -32,11 +32,11 @@ reset_table($dbA_con, $dbA_cred, $table."_ts");
 reset_table($dbB_con, $dbB_cred, $table."_ts");
 reset_table($buf_con, $buf_cred, $table."_ts");
 
-//echo '<br>s--------------------<br>';
+
 
 $columns = array('P_Id int', 'LastName varchar(255)', 'FirstName varchar(255)', 'Address varchar(255)', 'City varchar(255)');
 create_timestamp_table($table, $dbA_con, $columns, 'P_Id');
-//echo '<br>e--------------------<br>';
+
 $columns = fetch_columns($table, $dbA_con);
 $formatted_cols = '('.format_columns($columns).')';
 echo $formatted_cols;
@@ -59,38 +59,34 @@ insert_data($data_ts, $table_ts, $dbA_con);
 
 sleep($secs);
 sync_tables($dbA_cred, $buf_cred);
-
+//echo '<br>s--------------------<br>';
 $dbA_info = get_column_info($table, $dbA_con);
 $buf_info = get_column_info($table, $buf_con);
 echo "<br>dbA and buf column info:";
+
 check_column_info($dbA_info, $buf_info);
 
+$dbA_ts_info = get_column_info($table."_ts", $dbA_con);
+$buf_ts_info = get_column_info($table."_ts", $buf_con);
+check_column_info($dbA_ts_info, $buf_ts_info);
+//echo '<br>e--------------------<br>';
 $dbA_data = fetch_data($table, $dbA_con);
 $buf_data = fetch_data($table, $buf_con);
+check_data_match($dbA_data, $buf_data);
 
-$i = 0;
-foreach ($dbA_data as $dbA_row) {
-	$buf_row = $buf_data[$i];
-	if ($dbA_row['LastUpdated'] == $buf_row['LastUpdated']) {
-		$test1 = true;
-	}
-	else {
-		$test1 = false;
-		break;
-	}
-	++$i;
-}
-if ($test1 = false) {
-	echo "Test 1: timestamp fail! <br>\n";	
-}
-elseif ($test2 = true) {
-	echo "Test 1: timestamp pass! <br>\n";
-}
+$dbA_ts_data = fetch_data($table."_ts", $dbA_con);
+$buf_ts_data = fetch_data($table."_ts", $buf_con);
+echo "<br><br>dbA_ts<br>";
+check_not_null($dbA_ts_data);
+echo "<br><br>buf_ts<br>";
+check_not_null($buf_ts_data);
+
 //End Test 1
 
 
 //Test 2: tests inserted columns
 echo "<br>TEST 2";
+echo "<br>dbA<br>";
 insert_column($table, 'NewColumn varchar(255)', $dbA_con);
 insert_column($table, 'InsertedColumn int', $dbA_con, 'FirstName');
 $U_now = time();
@@ -100,12 +96,18 @@ $sql1 = "UPDATE ".$table." SET InsertedColumn = 1, NewColumn='hi' WHERE P_Id=1";
 $sql2 = "UPDATE ".$table." SET InsertedColumn = 2, NewColumn='ho' WHERE P_Id=2";
 $sql3 = "UPDATE ".$table."_ts SET InsertedColumn = '$now', NewColumn='$now' WHERE P_Id=1";
 $sql4 = "UPDATE ".$table."_ts SET InsertedColumn = '$now', NewColumn='$now' WHERE P_Id=2";
-echo "<br>$sql3<br>$sql4<br>";
+echo "<br>$sql1<br>$sql2<br>$sql3<br>$sql4<br>";
 mysqli_query($dbA_con, $sql1);
 mysqli_query($dbA_con, $sql2);
 mysqli_query($dbA_con, $sql3);
 mysqli_query($dbA_con, $sql4);
 
+/*
+Problem on dbsync_functions.php line 483. In this particular instance, columns P_Id 
+and InsertedColumn in dbA table 'Persons' contain the same value and so array_search
+returns the first instance--P_Id--both times, resulting in NULL values in column 
+InsertedColumn in buf table 'Persons', and a zero timestamp in table 'Persons_ts'.
+*/
 sleep($secs);
 sync_tables($dbA_cred, $buf_cred);
 
@@ -114,8 +116,13 @@ $buf_info = get_column_info($table, $buf_con);
 echo "<br>dbA and buf column info:";
 check_column_info($dbA_info, $buf_info);
 
+
 $dbA_columns = fetch_columns($table, $dbA_con);
 $buf_columns = fetch_columns($table, $buf_con);
+"<br>dbA:";
+print_array($dbA_columns);
+"<br>buf:";
+print_array($dbA_columns);
 
 if ($dbA_columns === $buf_columns) {
 	echo "Test 2: columns pass! <br>\n";
@@ -129,14 +136,14 @@ elseif ($dbA_columns !== $buf_columns) {
 echo "<br>TEST 3";
 $dbA_data = fetch_data($table, $dbA_con);
 $buf_data = fetch_data($table, $buf_con);
+$dbA_ts_data = fetch_data($table."_ts", $dbA_con);
+$buf_ts_data = fetch_data($table."_ts", $buf_con);
 
-$match = check_data_match($dbA_data, $buf_data);
-if ($match == true) {
-	echo "<br>Test 3: data pass! <br>\n";
-}
-else {
-	echo "<br>Test 3: data fail! <br>\n";
-}
+check_data_match($dbA_data, $buf_data);
+echo "<br><br>dbA_ts<br>";
+check_not_null($dbA_ts_data);
+echo "<br><br>buf_ts<br>";
+check_not_null($buf_ts_data);
 //End Test 3
 /*
 //Test 4: tests updated data again after alterations
