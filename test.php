@@ -32,28 +32,21 @@ reset_table($dbA_con, $dbA_cred, $table."_ts");
 reset_table($dbB_con, $dbB_cred, $table."_ts");
 reset_table($buf_con, $buf_cred, $table."_ts");
 
-
-
 $columns = array('P_Id int', 'LastName varchar(255)', 'FirstName varchar(255)', 'Address varchar(255)', 'City varchar(255)');
 create_timestamp_table($table, $dbA_con, $columns, 'P_Id');
 
 $columns = fetch_columns($table, $dbA_con);
 $formatted_cols = '('.format_columns($columns).')';
-echo $formatted_cols;
-
 $U_now = time();
 date_default_timezone_set("GMT");
 $now = date("Y-m-d H:i:s", $U_now);
 $data = "(NULL, 'Nilsen', 'Johan', 'Bakken 2', 'Stavanger')";
 $data_ts ="(NULL, 1, '$now', '$now', '$now', '$now')";
 $table_ts = $table."_ts";
-echo "<br>$data_ts<br>";
 insert_data($data, $table, $dbA_con);
 insert_data($data_ts, $table_ts, $dbA_con);
-
 $data = "(NULL, 'Hansen', 'Ola', 'Timoteivn 10', 'Sandnes')";
 $data_ts ="(NULL, 2, '$now', '$now', '$now', '$now')";
-echo "<br>$data_ts<br>";
 insert_data($data, $table, $dbA_con);
 insert_data($data_ts, $table_ts, $dbA_con);
 
@@ -96,18 +89,13 @@ $sql1 = "UPDATE ".$table." SET InsertedColumn = 1, NewColumn='hi' WHERE P_Id=1";
 $sql2 = "UPDATE ".$table." SET InsertedColumn = 2, NewColumn='ho' WHERE P_Id=2";
 $sql3 = "UPDATE ".$table."_ts SET InsertedColumn = '$now', NewColumn='$now' WHERE P_Id=1";
 $sql4 = "UPDATE ".$table."_ts SET InsertedColumn = '$now', NewColumn='$now' WHERE P_Id=2";
-echo "<br>$sql1<br>$sql2<br>$sql3<br>$sql4<br>";
+//echo "<br>$sql1<br>$sql2<br>$sql3<br>$sql4<br>";
 mysqli_query($dbA_con, $sql1);
 mysqli_query($dbA_con, $sql2);
 mysqli_query($dbA_con, $sql3);
 mysqli_query($dbA_con, $sql4);
 
-/*
-Problem on dbsync_functions.php line 483. In this particular instance, columns P_Id 
-and InsertedColumn in dbA table 'Persons' contain the same value and so array_search
-returns the first instance--P_Id--both times, resulting in NULL values in column 
-InsertedColumn in buf table 'Persons', and a zero timestamp in table 'Persons_ts'.
-*/
+
 sleep($secs);
 sync_tables($dbA_cred, $buf_cred);
 
@@ -119,10 +107,10 @@ check_column_info($dbA_info, $buf_info);
 
 $dbA_columns = fetch_columns($table, $dbA_con);
 $buf_columns = fetch_columns($table, $buf_con);
-"<br>dbA:";
-print_array($dbA_columns);
-"<br>buf:";
-print_array($dbA_columns);
+//"<br>dbA:";
+//print_array($dbA_columns);
+//"<br>buf:";
+//print_array($dbA_columns);
 
 if ($dbA_columns === $buf_columns) {
 	echo "Test 2: columns pass! <br>\n";

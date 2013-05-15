@@ -55,13 +55,12 @@ function check_not_null($data) {
 	foreach ($data as $row) {
 		foreach ($row as $element) {
 			$column = array_search($element, $row);
-			echo "<br>$column<br>";
-			echo "$element<br>";
+			//echo "<br>$column<br>";
+			//echo "$element<br>";
 			if ($element == '') {
 				$is_null = true;	
 				array_push($null_cols, $column);	
-			}
-			
+			}	
 		}
 	}
 	if ($is_null == false) {

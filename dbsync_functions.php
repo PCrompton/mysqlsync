@@ -436,8 +436,6 @@ function insert_column($table, $column, $con, $prev_col=null) {
  */
 function insert_data($formatted_data, $table, $con, $formatted_columns = '') {
 	$query = 'INSERT INTO '.$table.''.$formatted_columns.' VALUES '.$formatted_data;
-	echo "<br>$table<br>";
-	echo "\n<br>$query<br>\n";
 	mysqli_query($con, $query);
 }
 
@@ -469,38 +467,41 @@ function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
 	$remaining_columns = array();
 	$updated_elements = array();
 	$remaining_elements = array();
+	$exhausted_columns = array();
 	$pk = get_primary_key($table, $con);
 	$pk_data = $db1_row[$pk];
-
+	
 	$U_now = time();
 	date_default_timezone_set("GMT");
 	$now = date("Y-m-d H:i:s", $U_now);
-
-	echo "<br>$now<br>";
-	//echo "<br>now: ".$now;
+	
 	//sorts which columns and elements need updates and which ones don't
 	foreach ($db1_row as $db1_element) {
-		$column_name = array_search($db1_element, $db1_row);
+		$keys = array_keys($db1_row, $db1_element);
+		foreach ($keys as $key) {
+			if (in_array($key, $exhausted_columns) == false) {
+				$column_name = $key;
+				break;
+			}
+		}
 		$db2_element = $db2_row[$column_name];
 		$element_datatype = $column_datatypes[$column_name];
 		$formatted_element = format_element($db1_element, $column, $element_datatype);
 		if ($db2_element !== $db1_element) {
-			echo "<br>updated column: $column_name<br>";
 			$updated_elements[$column_name] = $formatted_element;
 			array_push($updated_columns, $column_name);			
 		}
 		else {
-			echo "<br>remaining column: $column_name<br>";
 			$remaining_elements[$column_name] = $formatted_element;
 			array_push($remaining_columns, $column_name);
 		}
+		array_push($exhausted_columns, $column_name);
 	}
 	
 	//if table contains no previously existing data
 	if (count($remaining_columns) == 0) {
 		$row = $updated_elements;
 		$ts_row = array($pk_data);
-		
 		for ($i=1; $i<count($row); $i++) {
 			array_push($ts_row, "'$now'");
 		}
@@ -519,7 +520,6 @@ function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
 		foreach ($updated_columns as $column) {
 			--$n;
 			$element = $updated_elements[$column];
-			
 			$set .= "$column=$element";
 			$ts_set .= "$column='$now'";
 			if ($n != 0) {
@@ -527,13 +527,9 @@ function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
 				$ts_set .=", ";
 			}	
 		}
-		
 		$where = "$pk=$pk_data";
 		$query = "UPDATE $table SET $set WHERE $where";
-		
 		$ts_query = "UPDATE ".$table."_ts SET ".$ts_set." WHERE ".$where;
-		echo "<br>query: $query";
-		echo "<br>ts_query: $ts_query<br>";
 		mysqli_query($con, $query);	
 		mysqli_query($con, $ts_query);
 	}	
