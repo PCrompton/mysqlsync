@@ -4,7 +4,7 @@ require 'dbsync_functions.php';
 require 'test_dbsync_functions.php';
 echo "\n <br>";
 $input_con = create_connection($input_cred);
-$dbs = fetch_databases($input_cred);
+$dbs = array('dbA', 'dbB', 'buf');
 foreach ($dbs as $db) {
 	mysqli_query($input_con, 'DROP DATABASE '.$db);
 }
