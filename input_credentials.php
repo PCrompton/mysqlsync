@@ -15,4 +15,7 @@ $dbB_cred = array($srv, $un, $pw, $dbB);
 $buf_cred = array($srv, $un, $pw, $buf);
 
 
+//test
+
+
 ?>
