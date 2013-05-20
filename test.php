@@ -1,4 +1,5 @@
 <?php
+//test
 require '/Library/WebServer/Documents/mysqlsync/input_credentials.php';
 require '/Library/WebServer/Documents/mysqlsync/dbsync_functions.php';
 require '/Library/WebServer/Documents/mysqlsync/test_dbsync_functions.php';
