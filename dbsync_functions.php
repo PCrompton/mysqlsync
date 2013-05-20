@@ -47,6 +47,13 @@ function convert_timestamp($timestamp) {
 	return $unix_timestamp;
 }
 
+/** is_newer($timestamp1, $timestamp2)
+ * Determines whether $timestamp1 is newer than $timestamp2;
+ * returns true or false.
+ *
+ * $timestamp1 = Unix timestamp int
+ * $timestamp2 = Unix timestamp int
+ */
 function is_newer($timestamp1, $timestamp2) {
 	if ($timestamp1 > $timestamp2) {
 		return true;	
@@ -59,6 +66,14 @@ function is_newer($timestamp1, $timestamp2) {
 
 //-------------FETCH FUNCTIONS-------------------//
 
+/** fetch_databases($credentials)
+ * Returns array of all databases in the connection
+ *
+ * $credentials = credentials = array([server name], [username], [password])
+ * 
+ * Dependant on following functions:
+ *		-create_connection()
+ */
 function fetch_databases($credentials) {
 	$databases = array();
 	$con = create_connection($credentials);
@@ -90,6 +105,14 @@ function fetch_tables($credentials) {
     return $tables;
 }
 
+/** fetch_ts_tables($credentials)
+ * Fetches all tablenames ending in "_ts" and returns them as array
+ *
+ * $credentials = array([server name], [username], [password], [database name])
+ *
+ * Dependant on following functions:
+ *		-fetch_tables()
+ */
 function fetch_ts_tables($credentials) {
 	$tables = fetch_tables($credentials);
 	$ts_tables = array();
@@ -101,6 +124,15 @@ function fetch_ts_tables($credentials) {
 	return $ts_tables;
 }
 
+/**
+ * fetch_non_ts_tables($credentials)
+ * Fetches all tablenames not ending in "_ts" and returns them as array
+ *
+ * $credentials = array([server name], [username], [password], [database name])
+ *
+ * Dependant on following functions:
+ * 		-fetch_tables()
+ */
 function fetch_non_ts_tables($credentials) {
 	$tables = fetch_tables($credentials);
 	$non_ts_tables = array();
@@ -169,6 +201,13 @@ function get_column_names($columns) {
 	return $column_names;
 }
 
+/** get_primary_key($table, $con)
+ * Searches and returns primary key for given table; 
+ * returns null if no primary key is found
+ *
+ * $table = string of table's name
+ * $con = database's pre-establised connection 
+ */
 function get_primary_key($table, $con) {
 	$columns = get_column_info($table, $con);
 	foreach ($columns as $column) {
@@ -182,6 +221,19 @@ function get_primary_key($table, $con) {
 
 }
 
+/** get_column_info($table, $con)
+ * Returns an numeric array containing associative arrays 
+ * of each column in given table each with the following keys:
+ *		'Field'
+ *		'Type'
+ * 		'Null'
+ * 		'Key'
+ * 		'Default'
+ * 		'Extra'
+ *
+ * $table = string of table's name
+ * $con = database's pre-establised connection 
+ */
 function get_column_info($table, $con) {
 	$columns = array();
 	$result = mysqli_query($con, "SHOW COLUMNS FROM $table");
@@ -324,7 +376,21 @@ function format_element($element, $column_name, $datatype) {
 
 //-----------ALTER DATABSE FUNCTIONS----------//
 
-
+/** create_timestamp_table($tablename, $con, $columns, $pk)
+ * Creates two tables: one as $tablename (main table with primary key $pk) and one as
+ * $tablename_ts (intended to log the timestamps of each update in $tablename
+ * under the same column names). $tablename_ts contains all of the same columns
+ * as $tablename plus one more as $pk_ts as it's own primary key. Column $pk functions
+ * as a secondary key pointing to $tablename in $tablename_ts.
+ *
+ * $tablename = string of desired name for primary table
+ * $con = database's pre-establised connection
+ * $columns = an array of columns and their datatypes
+ * $pk = desired primary key column
+ * NOTE: $pk may or may not be included in $columns. If it is not included,
+ * the function automatically adds it to the table.
+ *
+ */
 function create_timestamp_table($tablename, $con, $columns, $pk) {
 	create_table($tablename, $con, $columns, $pk);
 	$column_names = get_column_names($columns);
@@ -387,7 +453,6 @@ function create_table($tablename, $con, $columns, $pk='', $fk='', $fk_ref='') {
   	}	
 }
  
-
 /** add_columns($table, $columns, $con)
  * Creates columns in MySQL table given array of column names and datatype, database
  * connection, and table name
@@ -438,8 +503,6 @@ function insert_data($formatted_data, $table, $con, $formatted_columns = '') {
 	$query = 'INSERT INTO '.$table.''.$formatted_columns.' VALUES '.$formatted_data;
 	mysqli_query($con, $query);
 }
-
-
 
 /** update_row($db1_row, $db2_row, $column_datatypes, $table, $con)
  * Updates given row with new data
