@@ -618,7 +618,7 @@ function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
  *		
  */
 function update_rows($db1_data, $db2_data, $column_datatypes, $table, $con) {
-	$i = 0;
+	$i = 0; 
 	foreach ($db1_data as $db1_row) {
 		$db2_row = $db2_data[$i];
 		if ($db2_row !== $db1_row) {
