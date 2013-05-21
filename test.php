@@ -1,7 +1,7 @@
 <?php
-require 'input_credentials.php';
-require 'dbsync_functions.php';
-require 'test_dbsync_functions.php';
+require '/Library/WebServer/Documents/mysqlsync/input_credentials.php';
+require '/Library/WebServer/Documents/mysqlsync/dbsync_functions.php';
+require '/Library/WebServer/Documents/mysqlsync/test_dbsync_functions.php';
 echo "\n <br>";
 $input_con = create_connection($input_cred);
 $dbs = array('dbA', 'dbB', 'buf');
@@ -94,7 +94,6 @@ mysqli_query($dbA_con, $sql1);
 mysqli_query($dbA_con, $sql2);
 mysqli_query($dbA_con, $sql3);
 mysqli_query($dbA_con, $sql4);
-
 
 sleep($secs);
 sync_tables($dbA_cred, $buf_cred);
