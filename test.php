@@ -1,7 +1,7 @@
 <?php
-require '/Library/WebServer/Documents/mysqlsync/input_credentials.php';
-require '/Library/WebServer/Documents/mysqlsync/dbsync_functions.php';
-require '/Library/WebServer/Documents/mysqlsync/test_dbsync_functions.php';
+require 'input_credentials.php';
+require 'dbsync_functions.php';
+require 'test_dbsync_functions.php';
 echo "\n <br>";
 $input_con = create_connection($input_cred);
 $dbs = array('dbA', 'dbB', 'buf');
@@ -25,34 +25,25 @@ echo "\n<br>Intentional delay to test timestamps...<br>\n";
 echo "<br>TEST 1";
 $table = 'Persons';
 
-reset_table($dbA_con, $dbA_cred, $table);
-reset_table($dbB_con, $dbB_cred, $table);
-reset_table($buf_con, $buf_cred, $table);
-reset_table($dbA_con, $dbA_cred, $table."_ts");
-reset_table($dbB_con, $dbB_cred, $table."_ts");
-reset_table($buf_con, $buf_cred, $table."_ts");
+drop_table($dbA_con, $dbA_cred, $table);
+drop_table($dbB_con, $dbB_cred, $table);
+drop_table($buf_con, $buf_cred, $table);
+drop_table($dbA_con, $dbA_cred, $table."_ts");
+drop_table($dbB_con, $dbB_cred, $table."_ts");
+drop_table($buf_con, $buf_cred, $table."_ts");
 
 $columns = array('P_Id int', 'LastName varchar(255)', 'FirstName varchar(255)', 'Address varchar(255)', 'City varchar(255)');
-create_timestamp_table($table, $dbA_con, $columns, 'P_Id');
-
+create_table_suite($table, $dbA_con, $columns, 'P_Id');
 $columns = fetch_columns($table, $dbA_con);
 $formatted_cols = '('.format_columns($columns).')';
-$U_now = time();
-date_default_timezone_set("GMT");
-$now = date("Y-m-d H:i:s", $U_now);
 $data = "(NULL, 'Nilsen', 'Johan', 'Bakken 2', 'Stavanger')";
-$data_ts ="(NULL, 1, '$now', '$now', '$now', '$now')";
-$table_ts = $table."_ts";
-insert_data($data, $table, $dbA_con);
-insert_data($data_ts, $table_ts, $dbA_con);
-$data = "(NULL, 'Hansen', 'Ola', 'Timoteivn 10', 'Sandnes')";
-$data_ts ="(NULL, 2, '$now', '$now', '$now', '$now')";
-insert_data($data, $table, $dbA_con);
-insert_data($data_ts, $table_ts, $dbA_con);
-
+insert_data_suite($data, $table, $dbA_con);
 sleep($secs);
+$data = "(NULL, 'Hansen', 'Ola', 'Timoteivn 10', 'Sandnes')";
+insert_data_suite($data, $table, $dbA_con);
+
 sync_tables($dbA_cred, $buf_cred);
-//echo '<br>s--------------------<br>';
+
 $dbA_info = get_column_info($table, $dbA_con);
 $buf_info = get_column_info($table, $buf_con);
 echo "<br>dbA and buf column info:";
@@ -95,7 +86,7 @@ mysqli_query($dbA_con, $sql2);
 mysqli_query($dbA_con, $sql3);
 mysqli_query($dbA_con, $sql4);
 
-sleep($secs);
+
 sync_tables($dbA_cred, $buf_cred);
 
 $dbA_info = get_column_info($table, $dbA_con);
@@ -169,12 +160,12 @@ else {
 
 /*
 //Test 5: tests two-way sync
-reset_table($dbA_con, $dbA_cred, $table);
-reset_table($dbB_con, $dbB_cred, $table);
-reset_table($buf_con, $buf_cred, $table);
-reset_table($dbA_con, $dbA_cred, $table."_ts");
-reset_table($dbB_con, $dbB_cred, $table."_ts");
-reset_table($buf_con, $buf_cred, $table."_ts");
+drop_table($dbA_con, $dbA_cred, $table);
+drop_table($dbB_con, $dbB_cred, $table);
+drop_table($buf_con, $buf_cred, $table);
+drop_table($dbA_con, $dbA_cred, $table."_ts");
+drop_table($dbB_con, $dbB_cred, $table."_ts");
+drop_table($buf_con, $buf_cred, $table."_ts");
 
 
 //dbA

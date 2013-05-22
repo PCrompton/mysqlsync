@@ -269,10 +269,10 @@ function get_column_datatypes($columns) {
  *
  * $table = string of table's name
  * $con = database's pre-established connection
- * $columns = string of column names separated by comma
+ * $column_names = string of column names separated by comma
  * 		defaults to '*' which selects all columns in table
  */
-function fetch_data($table, $con, $column_names = '*') {
+function fetch_data($table, $con, $column_names='*') {
 	$data = array();
 	$result = mysqli_query($con, "SELECT $column_names FROM ".$table);
 	while($row = mysqli_fetch_array($result, MYSQLI_ASSOC)) {
@@ -376,7 +376,8 @@ function format_element($element, $column_name, $datatype) {
 
 //-----------ALTER DATABSE FUNCTIONS----------//
 
-/** create_timestamp_table($tablename, $con, $columns, $pk)
+
+/** create_table_suite($tablename, $con, $columns, $pk)
  * Creates two tables: one as $tablename (main table with primary key $pk) and one as
  * $tablename_ts (intended to log the timestamps of each update in $tablename
  * under the same column names). $tablename_ts contains all of the same columns
@@ -387,12 +388,27 @@ function format_element($element, $column_name, $datatype) {
  * $con = database's pre-establised connection
  * $columns = an array of columns and their datatypes
  * $pk = desired primary key column
- * NOTE: $pk may or may not be included in $columns. If it is not included,
+ * 		NOTE: $pk may or may not be included in $columns. If it is not included,
  * the function automatically adds it to the table.
  *
  */
-function create_timestamp_table($tablename, $con, $columns, $pk) {
+function create_table_suite($tablename, $con, $columns, $pk) {
 	create_table($tablename, $con, $columns, $pk);
+	create_ts_table($tablename, $con, $columns, $pk);
+}
+
+/** create_ts_table($tablename, $con, $columns, $pk)
+ * Creates a parallel table for $tablename as $tablename_ts to record the
+ * 		time the record was updated.
+ * 
+ * $tablename = pre-existing table name for which parallel table
+ * 		is to be created
+ * $con = database's pre-established connection
+ * $columns = an array of columns and their datatypes
+ * $pk = primary key of $tablename (will become the foreign key
+ * 		of $tablename_ts, whose primary key become $pk_ts).
+ */
+function create_ts_table($tablename, $con, $columns, $pk) {
 	$column_names = get_column_names($columns);
 	$timestamp_columns = array();
 	foreach ($column_names as $column) {
@@ -409,6 +425,9 @@ function create_timestamp_table($tablename, $con, $columns, $pk) {
  * $con = a database connection
  * $columns = an array representing the desired names and datatypes of the new table's columns 
  * $pk = the primary key for this table
+ * 		NOTE: $pk may or may not be included in $columns. If it is not included,
+ * 		the function automatically adds it to the table. If no $pk is supplied,
+ * 		the function defaults the primary key to the first column in $columns.
  * $fk = foreign key for this table
  */
 function create_table($tablename, $con, $columns, $pk='', $fk='', $fk_ref='') {
@@ -504,8 +523,27 @@ function insert_data($formatted_data, $table, $con, $formatted_columns = '') {
 	mysqli_query($con, $query);
 }
 
+function insert_data_suite($formatted_data, $table, $con, $formatted_columns = '') {
+	insert_data($formatted_data, $table, $con, $formatted_columns);
+	$pk = get_primary_key($table, $con);
+	$pk_values = fetch_data($table, $con, $pk);
+	$values = array();
+	foreach ($pk_values as $pk_value) {
+		$value = $pk_value[$pk];
+		array_push($values, $value);
+	}
+	$pk_value = max($values);
+	$U_now = time();
+	date_default_timezone_set("GMT");
+	$now = date("Y-m-d H:i:s", $U_now);
+	$data_ts ="(NULL, $pk_value, '$now', '$now', '$now', '$now')";
+	$table_ts = $table."_ts";
+	insert_data($data_ts, $table_ts, $con, $formatted_columns);
+	
+}
+
 /** update_row($db1_row, $db2_row, $column_datatypes, $table, $con)
- * Updates given row with new data
+ * Updates db2 row based on db1 row in $table.
  *
  * $db1_row = represents database row from db1 as an
  *	array consisting of an associative array
@@ -524,8 +562,7 @@ function insert_data($formatted_data, $table, $con, $formatted_columns = '') {
  *		
  */
 function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
-	
-	$ts_table = $table."_ts";
+
 	$updated_columns = array();
 	$remaining_columns = array();
 	$updated_elements = array();
@@ -534,9 +571,6 @@ function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
 	$pk = get_primary_key($table, $con);
 	$pk_data = $db1_row[$pk];
 	
-	$U_now = time();
-	date_default_timezone_set("GMT");
-	$now = date("Y-m-d H:i:s", $U_now);
 	
 	//sorts which columns and elements need updates and which ones don't
 	foreach ($db1_row as $db1_element) {
@@ -564,42 +598,32 @@ function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
 	//if table contains no previously existing data
 	if (count($remaining_columns) == 0) {
 		$row = $updated_elements;
-		$ts_row = array($pk_data);
-		for ($i=1; $i<count($row); $i++) {
-			array_push($ts_row, "'$now'");
-		}
+		
 		$columns = $updated_columns;
 		$formatted_row = format_row($row);
-		$formatted_ts_row = format_row($ts_row);
 		$formatted_columns = format_columns($columns);
 		insert_data('('.$formatted_row.')', $table, $con, '('.$formatted_columns.')');
-		insert_data('('.$formatted_ts_row.')', $table.'_ts', $con, '('.$formatted_columns.')');
 	}
 	//if table does contain previously existing data
 	else {
 		$set = '';
-		$ts_set = '';
 		$n = count($updated_columns);
 		foreach ($updated_columns as $column) {
 			--$n;
 			$element = $updated_elements[$column];
 			$set .= "$column=$element";
-			$ts_set .= "$column='$now'";
 			if ($n != 0) {
 				$set.=", ";
-				$ts_set .=", ";
 			}	
 		}
 		$where = "$pk=$pk_data";
 		$query = "UPDATE $table SET $set WHERE $where";
-		$ts_query = "UPDATE ".$table."_ts SET ".$ts_set." WHERE ".$where;
 		mysqli_query($con, $query);	
-		mysqli_query($con, $ts_query);
 	}	
 }
 
-/** update_rows($db1_data, $db2_data, $column_datatypes, $table, $con)
- * Updates given rows with new data
+/** update_data($db1_data, $db2_data, $column_datatypes, $table, $con)
+ * Updates db2 data based on db1 data in $table.
  *
  * $db1_data = represents rows from db1 as a two-dimensional 
  *	array consisting of an associative array
@@ -617,7 +641,7 @@ function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
  * 		-update_row()
  *		
  */
-function update_rows($db1_data, $db2_data, $column_datatypes, $table, $con) {
+function update_data($db1_data, $db2_data, $column_datatypes, $table, $con) {
 	$i = 0; 
 	foreach ($db1_data as $db1_row) {
 		$db2_row = $db2_data[$i];
@@ -627,6 +651,41 @@ function update_rows($db1_data, $db2_data, $column_datatypes, $table, $con) {
 		$i++;	
 	}
 }	
+
+/** update_table_suite_rows($db1_data, $db2_data, $column_datatypes, $table, $db1_con, $db2_con)
+ * 	Updates $db2 data based on $db1 data in table; fetches data from $table_ts in
+ * 		both dbs and does the same for $table_ts.
+ *
+ * $db1_data = represents rows from db1 as a two-dimensional 
+ *	array consisting of an associative array
+ * 	of each row inside another array
+ * $db2_data = represents rows from db2 as a two-dimensional 
+ *	array consisting of an associative array
+ * 	of each row inside another array
+ * $column_datatypes = an associative array of string values
+ *  representing each column's datatype with the respective
+ *  column name as it's key.
+ * $table = string of table name
+ * $db1_con = established connection with db1
+ * $db2_con = established connection with db2
+ *
+ * Dependant on following functions:
+ * 		-fetch_columns()
+ *		-get_column_datatypes()
+ *		-fetch_data()
+ * 		-update_data()
+ *		
+ */
+function update_table_suite_data($db1_data, $db2_data, $column_datatypes, $table, $db1_con, $db2_con) {
+	$ts_table = $table."_ts";
+	$ts_columns = fetch_columns($ts_table, $db1_con);
+	$ts_column_datatypes = get_column_datatypes($ts_columns);
+	$db1_ts_data = fetch_data($table."_ts", $db1_con);
+	$db2_ts_data = fetch_data($table."_ts", $db2_con);
+	update_data($db1_data, $db2_data, $column_datatypes, $table, $db2_con);
+	update_data($db1_ts_data, $db2_ts_data, $ts_column_datatypes, $ts_table, $db2_con); 
+
+}
 
 //------------END ALTER DABASE FUNCTIONS---------------//
 
@@ -674,7 +733,7 @@ function sync_tables($db1_cred, $db2_cred) {
 			}
 		}
 		if (in_array($table, $db2_tables) == False) {
-			create_timestamp_table($table, $db2_con, $db1_columns, $pk);
+			create_table_suite($table, $db2_con, $db1_columns, $pk);
 		}
 		//adds missing columns
 		$db1_columns = fetch_columns($table, $db1_con);
@@ -695,7 +754,7 @@ function sync_tables($db1_cred, $db2_cred) {
 		//updates data to existing columns
 		$db2_columns = fetch_columns($table, $db2_con);	
 		$db2_data = fetch_data($table, $db2_con);
-		update_rows($db1_data, $db2_data, $column_datatypes, $table, $db2_con);	
+		update_table_suite_data($db1_data, $db2_data, $column_datatypes, $table, $db1_con, $db2_con);	
 	}
 	mysqli_close($db1_con);
 	mysqli_close($db2_con);
