@@ -29,8 +29,8 @@ drop_table($dbA_con, $dbA_cred, $table."_ts");
 drop_table($dbB_con, $dbB_cred, $table."_ts");
 drop_table($buf_con, $buf_cred, $table."_ts");
 
-//Test 1: tests timestamps
-echo "<br>TEST 1<br>";
+//INSTANCE 1: tests timestamps
+echo "<br>INSTANCE 1<br>";
 
 
 $columns = array(
@@ -92,11 +92,11 @@ $col_names_array = array(
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $col_names_array, $dbA_cred);
 sync_tables($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
-//End Test 1
+//End INSTANCE 1
 
 
-//Test 2: tests inserted columns
-echo "<br>TEST 2<br>";
+//INSTANCE 2: tests inserted columns
+echo "<br>INSTANCE 2<br>";
 insert_column($table, 'NewColumn varchar(255)', $dbA_con);
 insert_column($table, 'InsertedColumn int(11)', $dbA_con, 'FirstName');
 $U_now = time();
@@ -157,11 +157,11 @@ $col_names_array = array(
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $col_names_array, $dbA_cred);
 sync_tables($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
-//End Test 2
+//End INSTANCE 2
 
 
-//Test 3: tests updated data again after alterations
-echo "<br>TEST 3<br>";
+//INSTANCE 3: tests updated data again after alterations
+echo "<br>INSTANCE 3<br>";
 $U_now = time();
 date_default_timezone_set("GMT");
 $now = date("Y-m-d H:i:s", $U_now);
@@ -221,10 +221,10 @@ verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $col_names_array,
 sync_tables($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
 
-//End Test 3
+//End INSTANCE 3
 
 /*
-//Test 4: tests two-way sync
+//INSTANCE 4: tests two-way sync
 drop_table($dbA_con, $dbA_cred, $table);
 drop_table($dbB_con, $dbB_cred, $table);
 drop_table($buf_con, $buf_cred, $table);
@@ -263,10 +263,10 @@ $buf_data = fetch_data($table, $buf_con);
 
 $match = check_data_match($dbA_data, $buf_data);
 if ($match == true) {
-	echo "Test 5: two-way sync pass! <br>\n";
+	echo "INSTANCE 5: two-way sync pass! <br>\n";
 }
 else {
-	echo "Test 5: two-way sync fail! <br>\n";
+	echo "INSTANCE 5: two-way sync fail! <br>\n";
 }
 */
 
