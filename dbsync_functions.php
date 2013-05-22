@@ -1,5 +1,7 @@
 <?php
 
+
+
 //global datatype arrays
 $text_types = array('char','varchar','tinytext','text','blob','mediumtext','mediumblob','longtext','longblob','enum','set');
 $num_types = array('tinyint','smallint','mediumint','int','bigint','float','double','decimal');
@@ -292,6 +294,7 @@ function fetch_data($table, $con, $column_names='*') {
  */
 function print_array($array) {
 	foreach ($array as $element) {
+		echo gettype($element);
 		echo "  $element <br>";
 	}
 	echo "\n<br>";
@@ -335,6 +338,16 @@ function format_columns($columns) {
 	return $formatted_columns;
 }
 
+
+function format_data($data) {
+	$formatted_data = array();
+	foreach ($data as $row) {
+		$formatted_row = '('.format_row($row).')';
+		array_push($formatted_data, $formatted_row);
+	}
+	return $formatted_data;
+
+}
 /** format_row($row)
  * Returns string of data suitable for use in MySQL queries
  * i.e. 'element1, element2, element3....'
@@ -355,6 +368,27 @@ function format_row($row) {
 	return $formatted_row;
 }
 
+function format_elements($elements, $table, $con) {
+	$exhausted_columns = array();
+	$formatted_elements = array();
+	$columns = fetch_columns($table, $con);
+	$column_datatypes = get_column_datatypes($columns);
+	foreach ($elements as $element) {
+		$column_names = array_keys($elements, $element);
+		foreach ($column_names as $column_name) {
+			if (in_array($column_name, $exhausted_columns) == false) {
+				break;
+			}
+			array_push($exhausted_columns, $column_name);
+		}
+		$element_datatype = $column_datatypes[$column_name];
+		$formatted_element = format_element($element, $element_datatype);
+		array_push($formatted_elements, $formatted_element);
+	}
+	return $formatted_elements;
+	
+}
+
 /** format_element($element)
  * Returns formatted data element based on datatype for use in MySQL queries.
  *
@@ -363,7 +397,7 @@ function format_row($row) {
  * column.
  * 
  */
-function format_element($element, $column_name, $datatype) {
+function format_element($element, $datatype) {
 	$formatted_datatype = trim(preg_replace("/\([^)]+\)/", "", $datatype));
 	global $num_types;
 	if (in_array($formatted_datatype, $num_types)==false) {
@@ -583,7 +617,7 @@ function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
 		}
 		$db2_element = $db2_row[$column_name];
 		$element_datatype = $column_datatypes[$column_name];
-		$formatted_element = format_element($db1_element, $column, $element_datatype);
+		$formatted_element = format_element($db1_element, $element_datatype);
 		if ($db2_element !== $db1_element) {
 			$updated_elements[$column_name] = $formatted_element;
 			array_push($updated_columns, $column_name);			
@@ -779,10 +813,5 @@ function two_way_sync_tables($db1_cred, $db2_cred){
 }
 
 //---------END SYNC DATABASE FUNCTIONS-----------------//
-
-
-
-
-
 
 ?>
