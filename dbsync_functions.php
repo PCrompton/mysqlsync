@@ -1,7 +1,5 @@
 <?php
 
-
-
 //global datatype arrays
 $text_types = array('char','varchar','tinytext','text','blob','mediumtext','mediumblob','longtext','longblob','enum','set');
 $num_types = array('tinyint','smallint','mediumint','int','bigint','float','double','decimal');
@@ -21,6 +19,17 @@ function create_connection($credentials) {
 	return $con;  		
 }
 
+function is_newer($timestamp1, $timestamps2) {
+	$ts1_unix = convert_timestamp($timestamp1);
+	$ts2_unix = convert_timestamp($timestamp2);
+	if (is_newer_unix($ts1_unix, $ts2_unix) == true) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
 /** convert_timestamp($timestamp)
  * Returns a unix timestamp value converted from given timestamp. 
  *
@@ -34,16 +43,18 @@ function convert_timestamp($timestamp) {
 	$date_explode = explode('-', $date);
 	$time_explode = explode(':', $time);
 	
-	$year = $date_explode[0];
-	$month = $date_explode[1];
-	$day = $date_explode[2];
-	$hour = $time_explode[0];
-	$minute = $time_explode[1];
-	$second = $time_explode[2];
+	$year = (int) $date_explode[0];
+	$month = (int) $date_explode[1];
+	$day = (int) $date_explode[2];
+	$hour = (int) $time_explode[0];
+	$minute = (int) $time_explode[1];
+	$second = (int) $time_explode[2];
 	
 	$unix_timestamp = mktime($hour, $minute, $second, $month, $day, $year);
 	$check_date = date('Y-m-d H:i:s',$unix_timestamp);
 	if ($check_date != $timestamp) {
+		echo "<br>".gettype($check_date)." ".$check_date;
+		echo "<br>".gettype($timstamp)." ".$timestamp;
 		echo "<br>Conversion Discrepency<br>";
 	}
 	return $unix_timestamp;
@@ -56,7 +67,7 @@ function convert_timestamp($timestamp) {
  * $timestamp1 = Unix timestamp int
  * $timestamp2 = Unix timestamp int
  */
-function is_newer($timestamp1, $timestamp2) {
+function is_newer_unix($timestamp1, $timestamp2) {
 	if ($timestamp1 > $timestamp2) {
 		return true;	
 	}
@@ -264,6 +275,12 @@ function get_column_datatypes($columns) {
 		$column_datatypes[$column_name] = $column_datatype;
 	}
 	return $column_datatypes;
+}
+
+function get_row($table, $con, $pk, $pk_id) {
+	$result = mysqli_query($con, "SELECT * FROM ".$table." WHERE ".$pk."=".$pk_id);
+	$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
+	return $row;
 }
 	
 /** fetch_data($table, $con, $columns = '*')
@@ -576,59 +593,7 @@ function insert_data_suite($formatted_data, $table, $con, $formatted_columns = '
 	
 }
 
-/** update_row($db1_row, $db2_row, $column_datatypes, $table, $con)
- * Updates db2 row based on db1 row in $table.
- *
- * $db1_row = represents database row from db1 as an
- *	array consisting of an associative array
- * 	with the column name as the element's key.
-  * $db2_row = represents database row from db1 as an
- *	array consisting of an associative array
- * 	with the column name as the element's key.
- * $column_datatypes = an associative array of string values
- *  representing each column's datatype with the respective
- *  column name as it's key.
- * $table = string of table name
- * $con = established database connections
- *
- * Dependant on following functions:
- * 		-format_elements()
- *		
- */
-function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
-
-	$updated_columns = array();
-	$remaining_columns = array();
-	$updated_elements = array();
-	$remaining_elements = array();
-	$exhausted_columns = array();
-	$pk = get_primary_key($table, $con);
-	$pk_data = $db1_row[$pk];
-	
-	
-	//sorts which columns and elements need updates and which ones don't
-	foreach ($db1_row as $db1_element) {
-		$keys = array_keys($db1_row, $db1_element);
-		foreach ($keys as $key) {
-			if (in_array($key, $exhausted_columns) == false) {
-				$column_name = $key;
-				break;
-			}
-		}
-		$db2_element = $db2_row[$column_name];
-		$element_datatype = $column_datatypes[$column_name];
-		$formatted_element = format_element($db1_element, $element_datatype);
-		if ($db2_element !== $db1_element) {
-			$updated_elements[$column_name] = $formatted_element;
-			array_push($updated_columns, $column_name);			
-		}
-		else {
-			$remaining_elements[$column_name] = $formatted_element;
-			array_push($remaining_columns, $column_name);
-		}
-		array_push($exhausted_columns, $column_name);
-	}
-	
+function update_query($updated_columns, $remaining_columns, $updated_elements, $pk_id, $table, $con) {
 	//if table contains no previously existing data
 	if (count($remaining_columns) == 0) {
 		$row = $updated_elements;
@@ -650,10 +615,104 @@ function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
 				$set.=", ";
 			}	
 		}
-		$where = "$pk=$pk_data";
+		$pk = get_primary_key($table, $con);
+		$where = "$pk=$pk_id";
 		$query = "UPDATE $table SET $set WHERE $where";
 		mysqli_query($con, $query);	
 	}	
+}
+
+function check_row_for_updates($db1_row, $db2_row, $table, $db1_con, $db2_con) {
+	$pk = get_primary_key($table, $db1_con);
+	$pk_id = $db1_row[$pk];
+	if (strrpos($table, "_ts") == false) {
+		$db1_ts_row = get_row($table."_ts", $db1_con, $pk, $pk_id);
+		$db2_ts_row = get_row($table."_ts", $db2_con, $pk, $pk_id);
+	}
+	else {
+		$db1_ts_row = $db1_row;
+		$db2_ts_row = $db2_row;
+	}
+	$exhausted_columns = array();
+	$updated_columns = array();
+	$remaining_columns = array();
+	$updated_elements = array();
+	$remaining_elements = array();
+	foreach ($db1_row as $db1_element) {
+		$keys = array_keys($db1_row, $db1_element);
+		foreach ($keys as $key) {
+			if (in_array($key, $exhausted_columns) == false) {
+				$column_name = $key;
+				break;
+			}
+		}
+
+		$db2_element = $db2_row[$column_name];
+		$db1_ts_element = $db1_ts_row[$column_name];
+		$db2_ts_element = $db2_ts_row[$column_name];
+		if (get_column_datatype($column_name) == 'timestamp' and
+			is_newer($db1_ts_element, $db2_ts_element) == false) {
+			
+			$newer = $db2_element;	
+		}
+		else {
+			$newer = $db1_element;
+		}
+		$element_datatype = $column_datatypes[$column_name];
+		$formatted_element = format_element($db1_element, $element_datatype);
+		
+		if (($db2_element !== $db1_element) and ($newer == $db1_element)) {
+			$updated_elements[$column_name] = $formatted_element;
+			array_push($updated_columns, $column_name);			
+		}
+		else {
+			$remaining_elements[$column_name] = $formatted_element;
+			array_push($remaining_columns, $column_name);
+		}
+		array_push($exhausted_columns, $column_name);
+	}
+	return array($updated_columns, $remaining_columns, $updated_elements, $remaining_elements);
+}
+
+/** update_row($db1_row, $db2_row, $column_datatypes, $table, $con)
+ * Updates db2 row based on db1 row in $table.
+ *
+ * $db1_row = represents database row from db1 as an
+ *	array consisting of an associative array
+ * 	with the column name as the element's key.
+  * $db2_row = represents database row from db1 as an
+ *	array consisting of an associative array
+ * 	with the column name as the element's key.
+ * $column_datatypes = an associative array of string values
+ *  representing each column's datatype with the respective
+ *  column name as it's key.
+ * $table = string of table name
+ * $con = established database connections
+ *
+ * Dependant on following functions:
+ * 		-format_elements()
+ *		
+ */
+function update_row($db1_row, $db2_row, $table, $db1_con, $db2_con) {
+	$columns = fetch_columns($table, $db1_con);
+	$column_datatypes = get_column_datatypes($columns);
+	$pk = get_primary_key($table, $db1_con);
+	$pk_id = $db1_row[$pk];
+	
+	//sorts which columns and elements need updates and which ones don't
+	$sorted_db1_cols = check_row_for_updates($db1_row, $db2_row, $table, $db1_con, $db2_con);
+	
+	//updates rows
+	$db1_updated_columns = $sorted_db1_cols[0];
+	$db1_remaining_columns = $sorted_db1_cols[1];
+	$db1_updated_elements = $sorted_db1_cols[2];
+	$db1_remaining_elements = $sorted_db1_cols[3];
+	update_query($db1_updated_columns, $db1_remaining_columns, $db1_updated_elements, $pk_id, $table, $db2_con);
+}
+
+function update_data_suite($table, $db1_con, $db2_con) {	
+	update_data($table, $db1_con, $db2_con);
+	update_data($table."_ts", $db1_con, $db2_con);	
 }
 
 /** update_data($db1_data, $db2_data, $column_datatypes, $table, $con)
@@ -675,12 +734,14 @@ function update_row($db1_row, $db2_row, $column_datatypes, $table, $con) {
  * 		-update_row()
  *		
  */
-function update_data($db1_data, $db2_data, $column_datatypes, $table, $con) {
+function update_data($table, $db1_con, $db2_con) {
+	$db1_data = fetch_data($table, $db1_con);
+	$db2_data = fetch_data($table, $db2_con);
 	$i = 0; 
 	foreach ($db1_data as $db1_row) {
 		$db2_row = $db2_data[$i];
 		if ($db2_row !== $db1_row) {
-			update_row($db1_row, $db2_row, $column_datatypes, $table, $con);	
+			update_row($db1_row, $db2_row, $table, $db1_con, $db2_con);	
 		}
 		$i++;	
 	}
@@ -710,15 +771,9 @@ function update_data($db1_data, $db2_data, $column_datatypes, $table, $con) {
  * 		-update_data()
  *		
  */
-function update_table_suite_data($db1_data, $db2_data, $column_datatypes, $table, $db1_con, $db2_con) {
-	$ts_table = $table."_ts";
-	$ts_columns = fetch_columns($ts_table, $db1_con);
-	$ts_column_datatypes = get_column_datatypes($ts_columns);
-	$db1_ts_data = fetch_data($table."_ts", $db1_con);
-	$db2_ts_data = fetch_data($table."_ts", $db2_con);
-	update_data($db1_data, $db2_data, $column_datatypes, $table, $db2_con);
-	update_data($db1_ts_data, $db2_ts_data, $ts_column_datatypes, $ts_table, $db2_con); 
-
+function two_way_update_data_suite($table, $db1_con, $db2_con) {
+	update_data_suite($table, $db1_con, $db2_con);
+	update_data_suite($table, $db2_con, $db1_con);
 }
 
 //------------END ALTER DABASE FUNCTIONS---------------//
@@ -772,8 +827,6 @@ function sync_tables($db1_cred, $db2_cred) {
 		//adds missing columns
 		$db1_columns = fetch_columns($table, $db1_con);
 		$db2_columns = fetch_columns($table, $db2_con);	
-		$column_datatypes = get_column_datatypes($db1_columns);
-		$db1_data = fetch_data($table, $db1_con);
 		$prev_col = '';
 		$n = 0;
 		foreach ($db1_columns as $column) {			
@@ -786,30 +839,11 @@ function sync_tables($db1_cred, $db2_cred) {
 			$prev_col = $column;
 		}	
 		//updates data to existing columns
-		$db2_columns = fetch_columns($table, $db2_con);	
-		$db2_data = fetch_data($table, $db2_con);
-		update_table_suite_data($db1_data, $db2_data, $column_datatypes, $table, $db1_con, $db2_con);	
+		two_way_update_data_suite($table, $db1_con, $db2_con);
+		//update_table_suite_data($db1_data, $db2_data, $column_datatypes, $table, $db1_con, $db2_con);	
 	}
 	mysqli_close($db1_con);
 	mysqli_close($db2_con);
-}
-
-/**
- * Synchronizes db2 with db1, and vice versa
- *
- * $db1_cred = credentials for source database
- * 		array([server name], [username], [password], [database name])
- * $db2_cred = credentials for target database
- * 		array([server name], [username], [password], [database name])
- *
- * Dependant on following functions:
- * 		-sync_tables($db1_cred, $db2_cred)
- */
-function two_way_sync_tables($db1_cred, $db2_cred){
-	//echo "\ndb1-->db2\n";
-	sync_tables($db1_cred, $db2_cred);
-	//echo "\ndb2-->db1\n";
-	sync_tables($db2_cred, $db1_cred);	
 }
 
 //---------END SYNC DATABASE FUNCTIONS-----------------//
