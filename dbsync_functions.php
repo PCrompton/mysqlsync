@@ -714,6 +714,11 @@ function sync_row($db1_row, $db2_row, $table, $db1_con, $db2_con) {
 	update_query($db1_updated_columns, $db1_remaining_columns, $db1_updated_elements, $pk_id, $table, $db2_con);
 }
 
+function sync_data_suite($table, $db1_con, $db2_con) {  
+	sync_data($table, $db1_con, $db2_con);
+	sync_data($table."_ts", $db1_con, $db2_con);  
+}
+
 /** update_data($db1_data, $db2_data, $column_datatypes, $table, $con)
  * Updates db2 data based on db1 data in $table.
  *
@@ -765,7 +770,7 @@ function sync_tables($db1_tables, $db2_tables, $db1_con, $db2_con) {
 	foreach ($db1_tables as $table) {
 		sync_table($table, $db1_con, $db2_con, $db2_tables);
 		sync_columns($table, $db1_con, $db2_con);
-		sync_data($table, $db1_con, $db2_con);	
+		sync_data_suite($table, $db1_con, $db2_con);	
 	}
 }
 
