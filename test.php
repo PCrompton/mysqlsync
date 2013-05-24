@@ -77,7 +77,7 @@ $col_names_array = array(
 //End expected parameters
 
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $col_names_array, $dbA_cred);
-sync_tables($dbA_cred, $buf_cred);
+sync_databases($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
 //End INSTANCE 1
 
@@ -141,7 +141,7 @@ $col_names_array = array(
 //End expected parameters
 
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $col_names_array, $dbA_cred);
-sync_tables($dbA_cred, $buf_cred);
+sync_databases($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
 //End INSTANCE 2
 
@@ -203,7 +203,7 @@ $col_names_array = array(
 //End expected parameters
 
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $col_names_array, $dbA_cred);
-sync_tables($dbA_cred, $buf_cred);
+sync_databases($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
 //End INSTANCE 3
 
@@ -265,7 +265,7 @@ $col_names_array = array(
 //End expected parameters
 
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $col_names_array, $buf_cred);
-sync_tables($dbA_cred, $buf_cred);
+sync_databases($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
 //End INSTANCE 4
 
@@ -383,7 +383,7 @@ $col_names_array = array(
 echo "<br><b>buf update verifications: </b><br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $col_names_array, $buf_cred);
 echo "<br><b>Instance 5 test: </b><br>";
-sync_tables($dbA_cred, $buf_cred);
+sync_databases($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
 //End INSTANCE 5
 
@@ -501,7 +501,7 @@ $col_names_array = array(
 echo "<br><b>buf update verifications: </b><br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $col_names_array, $buf_cred);
 echo "<br><b>Instance 5 test: </b><br>";
-sync_tables($dbA_cred, $buf_cred);
+sync_databases($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
 //End INSTANCE 6
 
@@ -576,11 +576,9 @@ $col_names_array = array(
 //End expected parameters
 
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $col_names_array, $buf_cred);
-
-sync_tables($dbA_cred, $buf_cred);
-echo "<br>---------------------------------------------<br>";
+sync_databases($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
-echo "<br>---------------------------------------------<br>";
+
 //End INSTANCE 7
 
 mysqli_close($dbA_con);
