@@ -674,6 +674,10 @@ function check_row_for_updates($db1_row, $db2_row, $table, $db1_con, $db2_con) {
 	return array($updated_columns, $remaining_columns, $updated_elements, $remaining_elements);
 }
 
+
+//------------END ALTER DATABASE FUNCTIONS---------------//
+
+//-------------SYNC DATABASE FUNCTIONS-----------------//
 /** update_row($db1_row, $db2_row, $column_datatypes, $table, $con)
  * Updates db2 row based on db1 row in $table.
  *
@@ -693,7 +697,7 @@ function check_row_for_updates($db1_row, $db2_row, $table, $db1_con, $db2_con) {
  * 		-format_elements()
  *		
  */
-function update_row($db1_row, $db2_row, $table, $db1_con, $db2_con) {
+function sync_row($db1_row, $db2_row, $table, $db1_con, $db2_con) {
 	$columns = fetch_columns($table, $db1_con);
 	$column_datatypes = get_column_datatypes($columns);
 	$pk = get_primary_key($table, $db1_con);
@@ -708,11 +712,6 @@ function update_row($db1_row, $db2_row, $table, $db1_con, $db2_con) {
 	$db1_updated_elements = $sorted_db1_cols[2];
 	$db1_remaining_elements = $sorted_db1_cols[3];
 	update_query($db1_updated_columns, $db1_remaining_columns, $db1_updated_elements, $pk_id, $table, $db2_con);
-}
-
-function update_data_suite($table, $db1_con, $db2_con) {	
-	update_data($table, $db1_con, $db2_con);
-	update_data($table."_ts", $db1_con, $db2_con);	
 }
 
 /** update_data($db1_data, $db2_data, $column_datatypes, $table, $con)
@@ -734,51 +733,54 @@ function update_data_suite($table, $db1_con, $db2_con) {
  * 		-update_row()
  *		
  */
-function update_data($table, $db1_con, $db2_con) {
+function sync_data($table, $db1_con, $db2_con) {
 	$db1_data = fetch_data($table, $db1_con);
 	$db2_data = fetch_data($table, $db2_con);
 	$i = 0; 
 	foreach ($db1_data as $db1_row) {
 		$db2_row = $db2_data[$i];
 		if ($db2_row !== $db1_row) {
-			update_row($db1_row, $db2_row, $table, $db1_con, $db2_con);	
+			sync_row($db1_row, $db2_row, $table, $db1_con, $db2_con);	
 		}
 		$i++;	
 	}
 }	
 
-/** update_table_suite_rows($db1_data, $db2_data, $column_datatypes, $table, $db1_con, $db2_con)
- * 	Updates $db2 data based on $db1 data in table; fetches data from $table_ts in
- * 		both dbs and does the same for $table_ts.
- *
- * $db1_data = represents rows from db1 as a two-dimensional 
- *	array consisting of an associative array
- * 	of each row inside another array
- * $db2_data = represents rows from db2 as a two-dimensional 
- *	array consisting of an associative array
- * 	of each row inside another array
- * $column_datatypes = an associative array of string values
- *  representing each column's datatype with the respective
- *  column name as it's key.
- * $table = string of table name
- * $db1_con = established connection with db1
- * $db2_con = established connection with db2
- *
- * Dependant on following functions:
- * 		-fetch_columns()
- *		-get_column_datatypes()
- *		-fetch_data()
- * 		-update_data()
- *		
- */
-function two_way_update_data_suite($table, $db1_con, $db2_con) {
-	update_data_suite($table, $db1_con, $db2_con);
-	update_data_suite($table, $db2_con, $db1_con);
+function sync_table($table, $db1_con, $db2_con, $db2_tables) {
+	$db1_columns = fetch_columns($table, $db1_con);
+	$db1_info = get_column_info($table, $db1_con);
+	$pk = '';
+	foreach ($db1_info as $column) {
+		if ($column['Key'] == 'PRI') {
+			$pk = $column['Field'];
+		}
+	}
+	if (in_array($table, $db2_tables) == False) {
+		create_table_suite($table, $db2_con, $db1_columns, $pk);
+	}
 }
 
-//------------END ALTER DABASE FUNCTIONS---------------//
+//adds entire tables and their columns if missing from other db
+function sync_tables($db1_tables, $db2_tables, $db1_con, $db2_con) {
+	foreach ($db1_tables as $table) {
+		sync_table($table, $db1_con, $db2_con, $db2_tables);
+		sync_columns($table, $db1_con, $db2_con);
+		sync_data($table, $db1_con, $db2_con);	
+	}
+}
 
-//-------------SYNC DATABASE FUNCTIONS-----------------//
+//adds missing columns
+function sync_columns($table, $db1_con, $db2_con) {
+	$db1_columns = fetch_columns($table, $db1_con);
+	$db2_columns = fetch_columns($table, $db2_con);	
+	$prev_col = '';
+	foreach ($db1_columns as $column) {			
+		if (in_array($column, $db2_columns) == False) {	
+			insert_column($table, $column, $db2_con, $prev_col);
+		}	
+		$prev_col = $column;
+	}	
+}
 
 /** sync_tables($db1_cred, $db2_cred)
  * Synchronizes db2 with db1
@@ -801,47 +803,15 @@ function two_way_update_data_suite($table, $db1_con, $db2_con) {
  *	-fetch_data()
  *	-update_column()
  */
-function sync_tables($db1_cred, $db2_cred) {
-
-	$db1 = $db1_cred[3];
-	$db2 = $db2_cred[3];
+function sync_databases($db1_cred, $db2_cred) {
 	$db1_con = create_connection($db1_cred);
 	$db2_con = create_connection($db2_cred);
 	$db1_tables = fetch_non_ts_tables($db1_cred);
 	$db2_tables = fetch_non_ts_tables($db2_cred);
 	
-	foreach ($db1_tables as $table) {
-		
-		//adds entire table and it's columns if missing from db2
-		$db1_columns = fetch_columns($table, $db1_con);
-		$db1_info = get_column_info($table, $db1_con);
-		$pk = '';
-		foreach ($db1_info as $column) {
-			if ($column['Key'] == 'PRI') {
-				$pk = $column['Field'];
-			}
-		}
-		if (in_array($table, $db2_tables) == False) {
-			create_table_suite($table, $db2_con, $db1_columns, $pk);
-		}
-		//adds missing columns
-		$db1_columns = fetch_columns($table, $db1_con);
-		$db2_columns = fetch_columns($table, $db2_con);	
-		$prev_col = '';
-		$n = 0;
-		foreach ($db1_columns as $column) {			
-			if (in_array($column, $db2_columns) == False) {	
-				insert_column($table, $column, $db2_con, $prev_col);
-			}
-			else {
-				$n++;	
-			}	
-			$prev_col = $column;
-		}	
-		//updates data to existing columns
-		two_way_update_data_suite($table, $db1_con, $db2_con);
-		//update_table_suite_data($db1_data, $db2_data, $column_datatypes, $table, $db1_con, $db2_con);	
-	}
+	sync_tables($db1_tables, $db2_tables, $db1_con, $db2_con);
+	sync_tables($db2_tables, $db1_tables, $db2_con, $db1_con);	
+	
 	mysqli_close($db1_con);
 	mysqli_close($db2_con);
 }
