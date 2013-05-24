@@ -43,6 +43,25 @@ if (function_exists('fetch_tables') == false) {
 	}
 }
 
+function reset_dbs($dbs, $con) {
+	drop_dbs($dbs, $con);
+	create_dbs($dbs, $con);
+}
+
+function drop_dbs($dbs, $con) {
+	foreach ($dbs as $db) {
+		mysqli_query($con, 'DROP DATABASE '.$db);
+		echo "$db dropped!<br>";
+	}
+	echo "<br>";
+}
+
+function create_dbs($dbs, $con) {
+	foreach ($dbs as $db) {
+		create_database($db, $con);
+	}
+}
+
 function test_instance($table, $db1_con, $db2_con) {
 	
 	$db1_info = get_column_info($table, $db1_con);
@@ -86,10 +105,10 @@ function test_instance($table, $db1_con, $db2_con) {
 			}
 		}
 		if ($result == false) {
-			echo "<br>".$key.": failed!";
+			echo $key.": failed!<br>";
 		}
 		else {
-			echo "<br>".$key.": passed!";
+			echo $key.": passed!<br>";
 		}	
 	}
 	echo "<br>";
@@ -108,6 +127,7 @@ function verify_instance($expected_tables, $expected_cols_array, $expected_data_
 		verify_data($expected_data, $table, $con, $col_names);
 
 	}
+	echo "<br>";
 	mysqli_close($con);
 }
 
