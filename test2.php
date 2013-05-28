@@ -6,7 +6,7 @@ echo "\n <br>";
 $input_con = create_connection($input_cred);
 
 $dbs = array($dbA, $dbB, $buf);
-echo "<br><h3>INITIAL TEST SET</h3><br>";
+echo "<br><h3>SAME TESTS BUT DATABASES SWAPPED IN sync_databases() PARAMETERS</h3><br>";
 reset_dbs($dbs, $input_con);
 
 $dbA_con = create_connection($dbA_cred);
@@ -118,7 +118,7 @@ verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbA_cred);
 echo "<br>buf pre-sync verification<br>";
 verify_instance(array(), array(), array(), $buf_cred);
 
-sync_databases($dbA_cred, $buf_cred);
+sync_databases($buf_cred, $dbA_cred);
 test_instance($table, $dbA_con, $buf_con);
 
 echo "<br>dbA post-sync verification<br>";
@@ -184,7 +184,7 @@ $exp_data_array = array(
 
 echo "<br>dbA pre-sync verification<br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbA_cred);
-sync_databases($dbA_cred, $buf_cred);
+sync_databases($buf_cred, $dbA_cred);
 test_instance($table, $dbA_con, $buf_con);
 
 echo "<br>dbA post-sync verification<br>";
@@ -242,7 +242,7 @@ $exp_data_array = array(
 echo "<br>dbA pre-sync verification<br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbA_cred);
 
-sync_databases($dbA_cred, $buf_cred);
+sync_databases($buf_cred, $dbA_cred);
 test_instance($table, $dbA_con, $buf_con);
 
 echo "<br>dbA post-sync verification<br>";
@@ -299,7 +299,7 @@ $exp_data_array = array(
 echo "<br>dbA pre-sync verification<br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $buf_cred);
 
-sync_databases($dbA_cred, $buf_cred);
+sync_databases($buf_cred, $dbA_cred);
 test_instance($table, $dbA_con, $buf_con);
 
 echo "<br>dbA post-sync verification<br>";
@@ -443,7 +443,7 @@ $exp_data_array = array(
 
 
 echo "<br>Instance 5 test: <br>";
-sync_databases($dbA_cred, $buf_cred);
+sync_databases($buf_cred, $dbA_cred);
 test_instance($table, $dbA_con, $buf_con);
 
 echo "<br>dbA post-sync verifications: <br>";
@@ -555,12 +555,12 @@ verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $buf_cred);
 
 //End expected parameters
 echo "<br>Instance 6 test: <br>";
-sync_databases($dbA_cred, $buf_cred);
+sync_databases($buf_cred, $dbA_cred);
 test_instance($table, $dbA_con, $buf_con);
 //End INSTANCE 6
 
 mysqli_close($dbA_con);
 mysqli_close($dbB_con);
 mysqli_close($buf_con);
-require 'test2.php';
+
 ?>

@@ -4,7 +4,7 @@
 $text_types = array('char','varchar','tinytext','text','blob','mediumtext','mediumblob','longtext','longblob','enum','set');
 $num_types = array('tinyint','smallint','mediumint','int','bigint','float','double','decimal');
 $date_types = array('date', 'datetime', 'timestamp','time','year');
-
+$conflicts = array();
 /** create_connection($credentials)
  * Creates and returns a MySQL connection as $con by passing in an array of the database
  * credentials.
@@ -19,7 +19,9 @@ function create_connection($credentials) {
 	return $con;  		
 }
 
-function is_newer($timestamp1, $timestamps2) {
+function is_newer($timestamp1, $timestamp2) {
+	//echo "<br>timestamp1: ".gettype($timestamp1)." ".$timestamp2;
+	//echo "<br>timestamp2: ".gettype($timestamp1)." ".$timestamp2."<br>";
 	$ts1_unix = convert_timestamp($timestamp1);
 	$ts2_unix = convert_timestamp($timestamp2);
 	if (is_newer_unix($ts1_unix, $ts2_unix) == true) {
@@ -36,6 +38,11 @@ function is_newer($timestamp1, $timestamps2) {
  * $timestamp = YYYY-MM-DD hh:mm:ss.
  */
 function convert_timestamp($timestamp) {
+	date_default_timezone_set("GMT");
+	if ($timestamp == null) {
+		return 0;
+	}
+	//echo "<br>convert_timestamp<br>";
 	$date_time_array = explode(' ', $timestamp);
 	$date = $date_time_array[0];
 	$time = $date_time_array[1];
@@ -51,10 +58,11 @@ function convert_timestamp($timestamp) {
 	$second = (int) $time_explode[2];
 	
 	$unix_timestamp = mktime($hour, $minute, $second, $month, $day, $year);
+	//echo "<br>$unix_timestamp<br>";
 	$check_date = date('Y-m-d H:i:s',$unix_timestamp);
-	if ($check_date != $timestamp) {
-		echo "<br>".gettype($check_date)." ".$check_date;
-		echo "<br>".gettype($timstamp)." ".$timestamp;
+	if ($check_date != $timestamp and $timestamp != '0000-00-00 00:00:00') {
+		echo "<br>checkdate: ".gettype($check_date)." ".$check_date;
+		echo "<br>timestamp: ".gettype($timstamp)." ".$timestamp;
 		echo "<br>Conversion Discrepency<br>";
 	}
 	return $unix_timestamp;
@@ -278,9 +286,12 @@ function get_column_datatypes($columns) {
 }
 
 function get_row($table, $con, $pk, $pk_id) {
+	$row = array();
 	$result = mysqli_query($con, "SELECT * FROM ".$table." WHERE ".$pk."=".$pk_id);
-	$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
-	return $row;
+
+	while ($row = mysqli_fetch_array($result, MYSQLI_ASSOC)) {
+		return $row;
+	}
 }
 	
 /** fetch_data($table, $con, $columns = '*')
@@ -311,7 +322,7 @@ function fetch_data($table, $con, $column_names='*') {
  */
 function print_array($array) {
 	foreach ($array as $element) {
-		echo gettype($element);
+		//echo gettype($element);
 		echo "  $element <br>";
 	}
 	echo "\n<br>";
@@ -463,7 +474,7 @@ function create_ts_table($tablename, $con, $columns, $pk) {
 	$column_names = get_column_names($columns);
 	$timestamp_columns = array();
 	foreach ($column_names as $column) {
-		$timestamp_column = $column.' timestamp';
+		$timestamp_column = $column.' datetime';
 		array_push($timestamp_columns, $timestamp_column);	
 	}
 	create_table($tablename."_ts", $con, $timestamp_columns, $pk."_ts", $pk, $tablename);
@@ -553,10 +564,10 @@ function insert_column($table, $column, $con, $prev_col=null) {
 	$col_name = get_column_name($column);
 	$prev_col_name = get_column_name($prev_col);
 	$sql = "ALTER TABLE ".$table." ADD ".$column;
-	$sql_ts = "ALTER TABLE ".$table."_ts ADD ".$col_name." timestamp";
+	$sql_ts = "ALTER TABLE ".$table."_ts ADD ".$col_name." datetime";
 	if ($prev_col != '') {
 		$sql = "ALTER TABLE ".$table." ADD ".$column." AFTER ".$prev_col_name;
-		$sql_ts = "ALTER TABLE ".$table."_ts ADD ".$col_name." timestamp AFTER ".$prev_col_name;
+		$sql_ts = "ALTER TABLE ".$table."_ts ADD ".$col_name." datetime AFTER ".$prev_col_name;
 	}
 	mysqli_query($con, $sql);
 	mysqli_query($con, $sql_ts);
@@ -597,7 +608,6 @@ function update_query($updated_columns, $remaining_columns, $updated_elements, $
 	//if table contains no previously existing data
 	if (count($remaining_columns) == 0) {
 		$row = $updated_elements;
-		
 		$columns = $updated_columns;
 		$formatted_row = format_row($row);
 		$formatted_columns = format_columns($columns);
@@ -626,13 +636,14 @@ function check_row_for_updates($db1_row, $db2_row, $table, $db1_con, $db2_con) {
 	$pk = get_primary_key($table, $db1_con);
 	$pk_id = $db1_row[$pk];
 	if (strrpos($table, "_ts") == false) {
-		$db1_ts_row = get_row($table."_ts", $db1_con, $pk, $pk_id);
-		$db2_ts_row = get_row($table."_ts", $db2_con, $pk, $pk_id);
+		$table_ts = $table."_ts";
 	}
 	else {
-		$db1_ts_row = $db1_row;
-		$db2_ts_row = $db2_row;
+		$table_ts = $table;
 	}
+	$db1_ts_row = get_row($table_ts, $db1_con, $pk, $pk_id);
+	$db2_ts_row = get_row($table_ts, $db2_con, $pk, $pk_id);
+	
 	$exhausted_columns = array();
 	$updated_columns = array();
 	$remaining_columns = array();
@@ -646,25 +657,53 @@ function check_row_for_updates($db1_row, $db2_row, $table, $db1_con, $db2_con) {
 				break;
 			}
 		}
-
+		$ts_columns = fetch_columns($table_ts, $db1_con);
+		foreach ($ts_columns as $ts_column) {
+			if (get_column_name($ts_column) == $column_name) {
+				$ts_column_datatype = get_column_datatype($ts_column);
+				break;
+			}
+		}
+		
 		$db2_element = $db2_row[$column_name];
 		$db1_ts_element = $db1_ts_row[$column_name];
 		$db2_ts_element = $db2_ts_row[$column_name];
-		if (get_column_datatype($column_name) == 'timestamp' and
-			is_newer($db1_ts_element, $db2_ts_element) == false) {
-			
-			$newer = $db2_element;	
+
+		if ($ts_column_datatype == 'datetime') {
+			if (is_newer($db1_ts_element, $db2_ts_element) == true) {
+				$update = true;	
+			}
+			else {
+				$update = false;
+			}
 		}
 		else {
-			$newer = $db1_element;
+			if ($db2_ts_element == null and $db1_ts_element != null) {
+				$update = true;
+			}
+			else {
+				$update = false;
+			}
 		}
 		$element_datatype = $column_datatypes[$column_name];
 		$formatted_element = format_element($db1_element, $element_datatype);
-		
-		if (($db2_element !== $db1_element) and ($newer == $db1_element)) {
+		if (($db2_element != $db1_element) and ($update == true)) {
 			$updated_elements[$column_name] = $formatted_element;
-			array_push($updated_columns, $column_name);			
+			array_push($updated_columns, $column_name);	
+
 		}
+		elseif ($db1_element != $db2_element and $db1_ts_element == $db2_ts_element)	{
+			global $conflicts;
+			array_push($conflicts, array(
+				'Table' => $table,
+				'Column' => $column_name, 
+				'Row' => $pk_id, 
+				'db1' => $db1_element, 
+				'db1_ts' => $db1_ts_element, 
+				'db2' => $db2_element, 
+				'db2_ts' => $db2_ts_element
+			));
+		}	
 		else {
 			$remaining_elements[$column_name] = $formatted_element;
 			array_push($remaining_columns, $column_name);
@@ -714,11 +753,12 @@ function sync_row($db1_row, $db2_row, $table, $db1_con, $db2_con) {
 	update_query($db1_updated_columns, $db1_remaining_columns, $db1_updated_elements, $pk_id, $table, $db2_con);
 }
 
-function sync_data_suite($table, $db1_con, $db2_con) {  
-	sync_data($table, $db1_con, $db2_con);
-	sync_data($table."_ts", $db1_con, $db2_con);  
-}
+function sync_data_suite($table, $db1_con, $db2_con) {
 
+	sync_data($table, $db1_con, $db2_con);
+	sync_data($table."_ts", $db1_con, $db2_con);
+
+}
 /** update_data($db1_data, $db2_data, $column_datatypes, $table, $con)
  * Updates db2 data based on db1 data in $table.
  *
@@ -749,6 +789,7 @@ function sync_data($table, $db1_con, $db2_con) {
 		}
 		$i++;	
 	}
+	
 }	
 
 function sync_table($table, $db1_con, $db2_con, $db2_tables) {
@@ -809,14 +850,40 @@ function sync_columns($table, $db1_con, $db2_con) {
  *	-update_column()
  */
 function sync_databases($db1_cred, $db2_cred) {
+	$db1 = $db1_cred[3];
+	$db2 = $db2_cred[3];
 	$db1_con = create_connection($db1_cred);
 	$db2_con = create_connection($db2_cred);
 	$db1_tables = fetch_non_ts_tables($db1_cred);
 	$db2_tables = fetch_non_ts_tables($db2_cred);
-	
 	sync_tables($db1_tables, $db2_tables, $db1_con, $db2_con);
+	global $conflicts;
+	$conflicts = array();
 	sync_tables($db2_tables, $db1_tables, $db2_con, $db1_con);	
-	
+	if (count($conflicts) != 0) {
+		foreach ($conflicts as $conflict) {
+			$table = $conflict['Table'];
+			$row = $conflict['Row'];
+			$column = $conflict['Column'];
+			echo '<b>WARNING! The following could not be updated because of a conflict!</b>';
+			echo '<br><b>Please select one</b>';
+			echo "<br>Column:<b> ", $conflict['Column'], "</b>, Row:<b> ", $conflict['Row'], "</b>";
+			echo '
+				<form name = "resolve" action="resolve_conflict.php" method="post"
+				<br><input type="radio" name="choice" value=1> '.$db1.'<b>: '.$conflict["db2"].'</b>
+				<br><input type="radio" name="choice" value=2> '.$db2.'<b>: '.$conflict["db1"].'</b>
+				<input type="hidden" name="table" value='.$table.'>
+				<input type="hidden" name="row" value='.$row.'>
+				<input type="hidden" name="column" value='.$column.'>
+				<input type="hidden" name="db1_value" value='.$conflict["db2"].'>
+				<input type="hidden" name="db2_value" value='.$conflict["db1"].'>
+				<input type="hidden" name="db1" value='.$db1.'>
+				<input type="hidden" name="db2" value='.$db2.'>
+				<br><input type="submit" value="Submit">
+				</form>
+			';
+		}
+	}
 	mysqli_close($db1_con);
 	mysqli_close($db2_con);
 }
