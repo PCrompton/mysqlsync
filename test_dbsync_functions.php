@@ -105,7 +105,7 @@ function test_instance($table, $db1_con, $db2_con) {
 			}
 		}
 		if ($result == false) {
-			echo $key.": failed!<br>";
+			echo $key.": <b>failed!</b><br>";
 		}
 		else {
 			echo $key.": passed!<br>";
@@ -114,9 +114,12 @@ function test_instance($table, $db1_con, $db2_con) {
 	echo "<br>";
 }
 
-function verify_instance($expected_tables, $expected_cols_array, $expected_data_array, $col_names_array, $cred) {
+function verify_instance($expected_tables, $expected_cols_array, $expected_data_array, $cred) {
 	verify_tables($expected_tables, $cred);
 	$con = create_connection($cred);
+	if ($expected_tables == array()) {
+		echo "No Tables exist<br>";
+	}
 	foreach ($expected_tables as $table) {
 		$expected_columns = $expected_cols_array[$table];
 		$expected_data = $expected_data_array[$table];
@@ -124,7 +127,7 @@ function verify_instance($expected_tables, $expected_cols_array, $expected_data_
 		echo "$table: ";
 		verify_columns($expected_columns, $table, $con);
 		echo "$table: ";
-		verify_data($expected_data, $table, $con, $col_names);
+		verify_data($expected_data, $table, $con);
 
 	}
 	echo "<br>";
@@ -133,11 +136,11 @@ function verify_instance($expected_tables, $expected_cols_array, $expected_data_
 
 function verify_tables($expected_tables, $credentials) {
 	$actual_tables = fetch_tables($credentials);
-	if ($actual_tables === $expected_tables) {
+	if ($actual_tables == $expected_tables) {
 		echo "Tables verified<br>";
 	}
 	else {
-		echo "Error in table verifications<br>";
+		echo "<b>Error in table verifications</b><br>";
 		print_array($expected_tables);
 		print_array($actual_tables);
 	}
@@ -150,7 +153,7 @@ function verify_columns($expected_columns, $table, $con) {
 		echo "Columns verified<br>";
 	}
 	else {
-		echo "Error in column verification<br>";
+		echo "<b>Error in column verification</b><br>";
 		print_array($expected_columns);
 		print_array($actual_columns);
 	}
@@ -158,21 +161,19 @@ function verify_columns($expected_columns, $table, $con) {
 
 function verify_data($expected_data, $table, $con, $column_names = '*') {
 	$actual_data = fetch_data($table, $con, $column_names);
-	$formatted_actual_elements = array();
-	foreach ($actual_data as $row) {
-		$formatted_elements = format_elements($row, $table, $con);
-		array_push($formatted_actual_elements, $formatted_elements);
-	}
-	$formatted_actual = format_data($formatted_actual_elements);
 
 	
-	if ($formatted_actual === $expected_data) {
+	if ($actual_data == $expected_data) {
 		echo "Data verified<br>";
 	}
 	else {
-		echo "Error in data verification<br>";
-		print_array($expected_data);
-		print_array($formatted_actual);
+		echo "<b>Error in data verification</b><br>";
+		$i = 0;
+		foreach ($actual_data as $actual_row) {
+			echo "<br>Actual:<br> ", print_array($actual_row);	
+			echo "<br>Expected:<br> ", print_array($expected_data[$i]);
+			$i++;
+		}
 	}
 
 }
@@ -244,13 +245,14 @@ function check_no_null($data) {
 		return true;
 	}
 	else {
-		echo "<br>Error: data contains Null in columns:<br>";
+		echo "<br><b>Error: data contains Null in columns:</b><br>";
 		return false;
 	}
 	
 }
 
 function check_data_match($data1, $data2) {
+	
 	$match = true;
 	$i = 0;
 	foreach ($data1 as $row1) {
