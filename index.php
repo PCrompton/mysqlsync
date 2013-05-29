@@ -1,3 +1,3 @@
 <?php
-require 'test.php';
+require "links.html";
 ?>

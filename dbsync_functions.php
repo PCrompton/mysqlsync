@@ -5,6 +5,7 @@ $text_types = array('char','varchar','tinytext','text','blob','mediumtext','medi
 $num_types = array('tinyint','smallint','mediumint','int','bigint','float','double','decimal');
 $date_types = array('date', 'datetime', 'timestamp','time','year');
 $conflicts = array();
+$test = '';
 /** create_connection($credentials)
  * Creates and returns a MySQL connection as $con by passing in an array of the database
  * credentials.
@@ -850,8 +851,7 @@ function sync_columns($table, $db1_con, $db2_con) {
  *	-update_column()
  */
 function sync_databases($db1_cred, $db2_cred) {
-	$db1 = $db1_cred[3];
-	$db2 = $db2_cred[3];
+
 	$db1_con = create_connection($db1_cred);
 	$db2_con = create_connection($db2_cred);
 	$db1_tables = fetch_non_ts_tables($db1_cred);
@@ -860,7 +860,15 @@ function sync_databases($db1_cred, $db2_cred) {
 	global $conflicts;
 	$conflicts = array();
 	sync_tables($db2_tables, $db1_tables, $db2_con, $db1_con);	
+	
+	mysqli_close($db1_con);
+	mysqli_close($db2_con);
+}
+
+function resolve_conflicts($db1_cred, $db2_cred, $conflicts) {
 	if (count($conflicts) != 0) {
+		$db1 = $db1_cred[3];
+		$db2 = $db2_cred[3];
 		foreach ($conflicts as $conflict) {
 			$table = $conflict['Table'];
 			$row = $conflict['Row'];
@@ -884,8 +892,6 @@ function sync_databases($db1_cred, $db2_cred) {
 			';
 		}
 	}
-	mysqli_close($db1_con);
-	mysqli_close($db2_con);
 }
 
 //---------END SYNC DATABASE FUNCTIONS-----------------//

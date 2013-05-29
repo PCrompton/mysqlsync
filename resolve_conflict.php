@@ -1,4 +1,5 @@
 <?php
+require "links.html";
 require_once 'dbsync_functions.php';
 require_once 'input_credentials.php';
 require_once 'test_dbsync_functions.php';
@@ -32,8 +33,8 @@ mysqli_query($db1_con, $query);
 
 sync_databases($db1_cred, $db2_cred);
 test_instance($table, $db1_con, $db2_con);
+resolve_conflicts($db1_cred, $db2_cred, $conflicts);
 mysqli_close($db1_con);
-mysqli_close($db2_con)
-
-
+mysqli_close($db2_con);
+require "links.html";
 ?>

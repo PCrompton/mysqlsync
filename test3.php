@@ -1,5 +1,6 @@
 <?php
 require "links.html";
+
 require_once 'input_credentials.php';
 require_once 'dbsync_functions.php';
 require_once 'test_dbsync_functions.php';
@@ -7,12 +8,13 @@ echo "\n <br>";
 $input_con = create_connection($input_cred);
 
 $dbs = array($dbA, $dbB, $buf);
-echo "<h3>SAME TESTS BUT DATABASES SWAPPED IN sync_databases() PARAMETERS</h3><br>";
+echo "<h3>TESTS dbA AND dbB SYNC THROUGH BUF!</h3><br>";
 reset_dbs($dbs, $input_con);
-$conflicts = array();
+
 $dbA_con = create_connection($dbA_cred);
 $dbB_con = create_connection($dbB_cred);
 $buf_con = create_connection($buf_cred);
+
 //*
 //INSTANCE 1:
 $table = 'Persons';
@@ -116,15 +118,20 @@ echo "<br>dbA pre-sync verification<br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbA_cred);
 echo "<br>buf pre-sync verification<br>";
 verify_instance(array(), array(), array(), $buf_cred);
+echo "<br>dbB pre-sync verification<br>";
+verify_instance(array(), array(), array(), $dbB_cred);
 
-sync_databases($buf_cred, $dbA_cred);
+sync_databases($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
+sync_databases($buf_cred, $dbB_cred);
+test_instance($table, $buf_con, $dbB_con);
 
 echo "<br>dbA post-sync verification<br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbA_cred);
-
 echo "<br>buf post-sync verification<br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $buf_cred);
+echo "<br>dbB post-sync verification<br>";
+verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbB_cred);
 //End INSTANCE 1
 
 //*
@@ -183,13 +190,16 @@ $exp_data_array = array(
 
 echo "<br>dbA pre-sync verification<br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbA_cred);
-sync_databases($buf_cred, $dbA_cred);
+sync_databases($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
-
+sync_databases($buf_cred, $dbB_cred);
+test_instance($table, $dbA_con, $buf_con);
 echo "<br>dbA post-sync verification<br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbA_cred);
 echo "<br>buf post-sync verification<br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $buf_cred);
+echo "<br>dbB post-sync verification<br>";
+verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbB_cred);
 //End INSTANCE 2
 
 
@@ -241,20 +251,25 @@ $exp_data_array = array(
 echo "<br>dbA pre-sync verification<br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbA_cred);
 
-sync_databases($buf_cred, $dbA_cred);
+sync_databases($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
+sync_databases($buf_cred, $dbB_cred);
+test_instance($table, $buf_con, $dbB_con);
 
 echo "<br>dbA post-sync verification<br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbA_cred);
 echo "<br>buf post-sync verification<br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $buf_cred);
+echo "<br>dbB post-sync verification<br>";
+verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbB_cred);
+
 //End INSTANCE 3
 
 
 
 
 //INSTANCE 4
-echo "<br>INSTANCE 4: tests sync of updated data in buf to previously sync'd dbA <br>";
+echo "<br>INSTANCE 4: tests sync of updated data in dbB to previously sync'd dbA <br>";
 $U_now += 5;
 date_default_timezone_set("GMT");
 $now1 = date("Y-m-d H:i:s", $U_now);
@@ -265,10 +280,10 @@ $sql1 = "UPDATE ".$table." SET InsertedColumn = 1, NewColumn='hi' WHERE P_Id=1";
 $sql2 = "UPDATE ".$table." SET InsertedColumn = 2, NewColumn='ho' WHERE P_Id=2";
 $sql3 = "UPDATE ".$table."_ts SET InsertedColumn = '$now1', NewColumn='$now1' WHERE P_Id=1";
 $sql4 = "UPDATE ".$table."_ts SET InsertedColumn = '$now2', NewColumn='$now2' WHERE P_Id=2";
-mysqli_query($buf_con, $sql1);
-mysqli_query($buf_con, $sql2);
-mysqli_query($buf_con, $sql3);
-mysqli_query($buf_con, $sql4);
+mysqli_query($dbB_con, $sql1);
+mysqli_query($dbB_con, $sql2);
+mysqli_query($dbB_con, $sql3);
+mysqli_query($dbB_con, $sql4);
 
 //Expected parameters
 $exp_data1['InsertedColumn'] = '1';
@@ -295,16 +310,20 @@ $exp_data_array = array(
 );
 //End expected parameters
 
-echo "<br>dbA pre-sync verification<br>";
-verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $buf_cred);
+echo "<br>dbB pre-sync verification<br>";
+verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbB_cred);
 
+sync_databases($dbB_cred, $buf_cred);
+test_instance($table, $dbB_con, $buf_con);
 sync_databases($buf_cred, $dbA_cred);
-test_instance($table, $dbA_con, $buf_con);
+test_instance($table, $buf_con, $dbA_con);
 
 echo "<br>dbA post-sync verification<br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbA_cred);
 echo "<br>buf post-sync verification<br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $buf_cred);
+echo "<br>dbB post-sync verification<br>";
+verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbB_cred);
 //End INSTANCE 4
 
 
@@ -370,28 +389,28 @@ $sql5 = "UPDATE ".$table." SET LastName = 'Ortiz', FirstName='David' WHERE P_Id=
 $sql6 = "UPDATE ".$table." SET LastName = 'Pedroia', FirstName='Dustin' WHERE P_Id=2";
 $sql7 = "UPDATE ".$table."_ts SET LastName = '$now3', FirstName='$now3' WHERE P_Id=1";
 $sql8 = "UPDATE ".$table."_ts SET LastName = '$now4', FirstName='$now4' WHERE P_Id=2";
-mysqli_query($buf_con, $sql5);
-mysqli_query($buf_con, $sql6);
-mysqli_query($buf_con, $sql7);
-mysqli_query($buf_con, $sql8);
+mysqli_query($dbB_con, $sql5);
+mysqli_query($dbB_con, $sql6);
+mysqli_query($dbB_con, $sql7);
+mysqli_query($dbB_con, $sql8);
 
-//Expected parameters buf pre-sync
-$exp_data1_buf = $exp_data1;
-$exp_data2_buf = $exp_data2;
-$exp_ts_data1_buf = $exp_ts_data1;
-$exp_ts_data2_buf = $exp_ts_data2;
-$exp_data1_buf['LastName'] = 'Ortiz';
-$exp_data2_buf['LastName'] = 'Pedroia';
-$exp_data1_buf['FirstName'] = 'David';
-$exp_data2_buf['FirstName'] = 'Dustin';
+//Expected parameters dbB pre-sync
+$exp_data1_dbB = $exp_data1;
+$exp_data2_dbB = $exp_data2;
+$exp_ts_data1_dbB = $exp_ts_data1;
+$exp_ts_data2_dbB = $exp_ts_data2;
+$exp_data1_dbB['LastName'] = 'Ortiz';
+$exp_data2_dbB['LastName'] = 'Pedroia';
+$exp_data1_dbB['FirstName'] = 'David';
+$exp_data2_dbB['FirstName'] = 'Dustin';
 
-$exp_ts_data1_buf['LastName'] = $now3;
-$exp_ts_data2_buf['LastName'] = $now4;
-$exp_ts_data1_buf['FirstName'] = $now3;
-$exp_ts_data2_buf['FirstName'] = $now4;
+$exp_ts_data1_dbB['LastName'] = $now3;
+$exp_ts_data2_dbB['LastName'] = $now4;
+$exp_ts_data1_dbB['FirstName'] = $now3;
+$exp_ts_data2_dbB['FirstName'] = $now4;
 
-$exp_data = array($exp_data1_buf, $exp_data2_buf);
-$exp_ts_data = array($exp_ts_data1_buf, $exp_ts_data2_buf);
+$exp_data = array($exp_data1_dbB, $exp_data2_dbB);
+$exp_ts_data = array($exp_ts_data1_dbB, $exp_ts_data2_dbB);
 
 $exp_tables = array($table, $table."_ts");
 $exp_cols_array = array(
@@ -403,8 +422,8 @@ $exp_data_array = array(
 	$table."_ts" => $exp_ts_data
 );
 //End expected parameters
-echo "<br>buf pre-sync verifications: <br>";
-verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $buf_cred);
+echo "<br>dbB pre-sync verifications: <br>";
+verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbB_cred);
 
 //Expected parameters
 
@@ -442,25 +461,28 @@ $exp_data_array = array(
 
 
 echo "<br>Instance 5 test: <br>";
-sync_databases($buf_cred, $dbA_cred);
+sync_databases($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
+sync_databases($dbB_cred, $buf_cred);
+test_instance($table, $dbB_con, $buf_con);
 
+sync_databases($buf_cred, $dbA_cred);
+test_instance($table, $buf_con, $dbA_con);
+sync_databases($buf_cred, $dbB_cred);
+test_instance($table, $buf_con, $dbB_con);
 echo "<br>dbA post-sync verifications: <br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbA_cred);
 echo "<br>buf post-sync verifications: <br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $buf_cred);
+echo "<br>dbB post-sync verifications: <br>";
+verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbB_cred);
 
 //End INSTANCE 5
 
 
-
-
-
-
-
-
+/*
 //INSTANCE 6
-echo "<br>INSTANCE 6: tests sync of different updated data in same columns in both dbA and buf<br>";
+echo "<br>INSTANCE 6: tests sync of different updated data in same columns in both dbA and dbB<br>";
 $U_now += 5;
 date_default_timezone_set("GMT");
 $now1 = date("Y-m-d H:i:s", $U_now);
@@ -514,28 +536,28 @@ $sql5 = "UPDATE ".$table." SET LastName = 'Drew', FirstName='Stephen' WHERE P_Id
 $sql6 = "UPDATE ".$table." SET LastName = 'Middlebrooks', FirstName='Will' WHERE P_Id=2";
 $sql7 = "UPDATE ".$table."_ts SET LastName = '$now1', FirstName='$now1' WHERE P_Id=1";
 $sql8 = "UPDATE ".$table."_ts SET LastName = '$now2', FirstName='$now2' WHERE P_Id=2";
-mysqli_query($buf_con, $sql5);
-mysqli_query($buf_con, $sql6);
-mysqli_query($buf_con, $sql7);
-mysqli_query($buf_con, $sql8);
+mysqli_query($dbB_con, $sql5);
+mysqli_query($dbB_con, $sql6);
+mysqli_query($dbB_con, $sql7);
+mysqli_query($dbB_con, $sql8);
 
-//Expected parameters buf pre-sync
-$exp_data1_buf = $exp_data1;
-$exp_data2_buf = $exp_data2;
-$exp_ts_data1_buf = $exp_ts_data1;
-$exp_ts_data2_buf = $exp_ts_data2;
-$exp_data1_buf['LastName'] = 'Drew';
-$exp_data2_buf['LastName'] = 'Middlebrooks';
-$exp_data1_buf['FirstName'] = 'Stephen';
-$exp_data2_buf['FirstName'] = 'Will';
+//Expected parameters dbB pre-sync
+$exp_data1_dbB = $exp_data1;
+$exp_data2_dbB = $exp_data2;
+$exp_ts_data1_dbB = $exp_ts_data1;
+$exp_ts_data2_dbB = $exp_ts_data2;
+$exp_data1_dbB['LastName'] = 'Drew';
+$exp_data2_dbB['LastName'] = 'Middlebrooks';
+$exp_data1_dbB['FirstName'] = 'Stephen';
+$exp_data2_dbB['FirstName'] = 'Will';
 
-$exp_ts_data1_buf['LastName'] = $now1;
-$exp_ts_data2_buf['LastName'] = $now2;
-$exp_ts_data1_buf['FirstName'] = $now1;
-$exp_ts_data2_buf['FirstName'] = $now2;
+$exp_ts_data1_dbB['LastName'] = $now1;
+$exp_ts_data2_dbB['LastName'] = $now2;
+$exp_ts_data1_dbB['FirstName'] = $now1;
+$exp_ts_data2_dbB['FirstName'] = $now2;
 
-$exp_data = array($exp_data1_buf, $exp_data2_buf);
-$exp_ts_data = array($exp_ts_data1_buf, $exp_ts_data2_buf);
+$exp_data = array($exp_data1_dbB, $exp_data2_dbB);
+$exp_ts_data = array($exp_ts_data1_dbB, $exp_ts_data2_dbB);
 
 $exp_tables = array($table, $table."_ts");
 $exp_cols_array = array(
@@ -547,18 +569,32 @@ $exp_data_array = array(
 	$table."_ts" => $exp_ts_data
 );
 //End expected parameters
-echo "<br>buf pre-sync verifications: <br>";
-verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $buf_cred);
+echo "<br>dbB pre-sync verifications: <br>";
+verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbB_cred);
 
 //Expected parameters post-sync
-
-//End expected parameters
 echo "<br>Instance 6 test: <br>";
-sync_databases($buf_cred, $dbA_cred);
+sync_databases($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
+sync_databases($dbB_cred, $buf_cred);
+test_instance($table, $dbB_con, $buf_con);
+
+sync_databases($buf_cred, $dbA_cred);
+test_instance($table, $buf_con, $dbA_con);
+sync_databases($buf_cred, $dbB_cred);
+test_instance($table, $buf_con, $dbB_con);
+echo "<br>dbA post-sync verifications: <br>";
+verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbA_cred);
+echo "<br>buf post-sync verifications: <br>";
+verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $buf_cred);
+echo "<br>dbB post-sync verifications: <br>";
+verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbB_cred);
 //End INSTANCE 6
+*/
 global $conflicts;
 resolve_conflicts($dbA_cred, $buf_cred, $conflicts);
+
+
 mysqli_close($dbA_con);
 mysqli_close($dbB_con);
 mysqli_close($buf_con);
