@@ -1,4 +1,6 @@
 <?php
+require "links.html";
+
 require_once 'input_credentials.php';
 require_once 'dbsync_functions.php';
 require_once 'test_dbsync_functions.php';
@@ -6,18 +8,17 @@ echo "\n <br>";
 $input_con = create_connection($input_cred);
 
 $dbs = array($dbA, $dbB, $buf);
-echo "<br><h3>INITIAL TEST SET</h3><br>";
+echo "<h3>INITIAL TEST SET</h3><br>";
 reset_dbs($dbs, $input_con);
 
 $dbA_con = create_connection($dbA_cred);
 $dbB_con = create_connection($dbB_cred);
 $buf_con = create_connection($buf_cred);
 
-$table = 'Persons';
-$secs = 1;
-
 //*
 //INSTANCE 1:
+$table = 'Persons';
+$secs = 1;
 echo "<br>INSTANCE 1: tests sync of newly configured dbA to empty buf<br>";
 
 
@@ -558,9 +559,10 @@ echo "<br>Instance 6 test: <br>";
 sync_databases($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
 //End INSTANCE 6
-
+global $conflicts;
+resolve_conflicts($dbA_cred, $buf_cred, $conflicts);
 mysqli_close($dbA_con);
 mysqli_close($dbB_con);
 mysqli_close($buf_con);
-require 'test2.php';
+require "links.html";
 ?>

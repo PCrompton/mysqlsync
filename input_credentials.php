@@ -1,5 +1,5 @@
 <?php
-
+$test = "test.php";
 $inputun = $_POST["un"];
 $inputpw = $_POST["pw"];
 $inputsn = $_POST["sn"];

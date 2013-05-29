@@ -1,8 +1,7 @@
 <?php
-require "input_credentials.php";
-global $test;
+
 echo '
-<form action='.$test.' method="post">
+<form action="resolve_conflict" method="post">
 	<h3>Local MySQL Server</h3>
 	Server Name: <input type="text" name="sn"><br>
 	MySQL User Name: <input type="text" name="un"><br>
@@ -12,7 +11,6 @@ echo '
 	<input type="submit">
 </form>
 ';
-
 
 
 ?>
