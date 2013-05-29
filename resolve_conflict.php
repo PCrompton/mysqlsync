@@ -31,9 +31,9 @@ $pk = get_primary_key($table, $db1_con);
 $query = "UPDATE $table SET $column='$db_value' WHERE $pk=$row";
 mysqli_query($db1_con, $query);
 
-sync_databases($db1_cred, $db2_cred);
-test_instance($table, $db1_con, $db2_con);
-resolve_conflicts($db1_cred, $db2_cred, $conflicts);
+sync_databases($db2_cred, $db1_cred);
+test_instance($table, $db2_con, $db1_con);
+resolve_conflicts($db2_cred, $db1_cred, $conflicts);
 mysqli_close($db1_con);
 mysqli_close($db2_con);
 require "links.html";
