@@ -558,7 +558,7 @@ sync_databases($buf_cred, $dbA_cred);
 test_instance($table, $dbA_con, $buf_con);
 //End INSTANCE 6
 global $conflicts;
-resolve_conflicts($dbA_cred, $buf_cred, $conflicts);
+resolve_conflicts($buf_cred, $dbA_cred, $conflicts);
 mysqli_close($dbA_con);
 mysqli_close($dbB_con);
 mysqli_close($buf_con);

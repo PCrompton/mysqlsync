@@ -19,8 +19,8 @@ Instructions:<br><br>
 
 1. Download mysqlsync and place it on your local server.<br>
 2. In your browser's address bar, type localhost/mysqlsync (or whatever the filename may be).<br>
-3. Open 'input_credentials.php' with a text editor and replace the following strings with your own mysql credentials:<br>
+<b>3. Open 'input_credentials.php' with a text editor and replace the following strings with your own mysql credentials:<br>
 	$un = 'root';<br>
 	$pw = 'root';<br>
-	$srv = 'localhost';<br>
+	$srv = 'localhost';<br></b>
 4. (optional) log in to phpmyadmin before and after running the script to see changes more clearly<br><br>
