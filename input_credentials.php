@@ -1,8 +1,7 @@
 <?php
-$test = "test.php";
-$inputun = $_POST["un"];
-$inputpw = $_POST["pw"];
-$inputsn = $_POST["sn"];
+$un = 'root';
+$pw = 'root';
+$srv = 'localhost';
 
 $dbA = 'dbA';
 $dbB = 'dbB';
@@ -14,5 +13,4 @@ $dbA_cred = array($srv, $un, $pw, $dbA);
 $dbB_cred = array($srv, $un, $pw, $dbB);
 $dbC_cred = array($srv, $un, $pw, $dbC);
 $buf_cred = array($srv, $un, $pw, $buf);
-
 ?>
