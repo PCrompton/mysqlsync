@@ -7,7 +7,7 @@ echo "\n <br>";
 $input_con = create_connection($input_cred);
 
 $dbs = array($dbA, $dbB, $buf);
-echo "<h3>SAME TESTS BUT DATABASES SWAPPED IN sync_databases() PARAMETERS</h3><br>";
+echo "<h3>SAME TESTS AS TEST SET 1 BUT DATABASES SWAPPED IN sync_databases() PARAMETERS</h3><br>";
 reset_dbs($dbs, $input_con);
 $conflicts = array();
 $dbA_con = create_connection($dbA_cred);

@@ -8,7 +8,7 @@ echo "\n <br>";
 $input_con = create_connection($input_cred);
 
 $dbs = array($dbA, $dbB, $dbC, $buf);
-echo "<h3>TESTS dbA AND dbB SYNC THROUGH BUF!</h3><br>";
+echo "<h3>TESTS dbA, dbB and dbC SYNC THROUGH BUF</h3><br>";
 reset_dbs($dbs, $input_con);
 
 $dbA_con = create_connection($dbA_cred);
