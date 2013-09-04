@@ -1,6 +1,5 @@
 <?php
 require "links.html";
-
 require_once 'input_credentials.php';
 require_once 'dbsync_functions.php';
 require_once 'test_dbsync_functions.php';
@@ -118,6 +117,7 @@ echo "<br>dbA pre-sync verification<br>";
 verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $dbA_cred);
 echo "<br>buf pre-sync verification<br>";
 verify_instance(array(), array(), array(), $buf_cred);
+
 
 sync_databases($dbA_cred, $buf_cred);
 test_instance($table, $dbA_con, $buf_con);
@@ -456,11 +456,6 @@ verify_instance($exp_tables, $exp_cols_array, $exp_data_array, $buf_cred);
 
 
 
-
-
-
-
-
 //INSTANCE 6
 echo "<br>INSTANCE 6: tests sync of different updated data in same columns in both dbA and buf<br>";
 $U_now += 5;
@@ -565,4 +560,5 @@ mysqli_close($dbA_con);
 mysqli_close($dbB_con);
 mysqli_close($buf_con);
 require "links.html";
+//*/
 ?>
