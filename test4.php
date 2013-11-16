@@ -18,7 +18,7 @@ $buf_con = create_connection($buf_cred);
 //*
 
 //INSTANCE 1:
-$table = 'Persons';
+$table = 'persons';
 $secs = 1;
 echo "<br>INSTANCE 1: tests sync of newly configured dbA to empty buf and then buf to dbB<br>";
 

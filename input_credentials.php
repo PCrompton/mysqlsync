@@ -1,6 +1,6 @@
 <?php
 $un = 'root';
-$pw = 'root';
+$pw = 'bitnami';
 $srv = 'localhost';
 
 $dbA = 'dbA';
